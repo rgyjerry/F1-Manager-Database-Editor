@@ -452,9 +452,9 @@ function setupTeamOverallButtons() {
         if (!title || title.querySelector(".team-overall-button")) return;
 
         const button = document.createElement("div");
-        button.className = "button-with-icon compact team-overall-button";
+        button.className = "button-with-icon compact bulk-edit-button team-overall-button";
         button.title = "Set overall performance";
-        button.innerHTML = `<i class="bi bi-magic"></i><span>Set</span>`;
+        button.innerHTML = `<i class="bi bi-speedometer2"></i><span>Overall</span>`;
 
         button.addEventListener("click", async function (event) {
             event.preventDefault();
@@ -469,7 +469,8 @@ function setupTeamOverallButtons() {
                 defaultValue: Number.isFinite(currentOverallValue) ? currentOverallValue.toFixed(2) : "85",
                 min: 0,
                 max: 100,
-                step: 0.01
+                step: 0.01,
+                description: "Use the arrows to fine-tune by 0.01, or type a value."
             });
             if (answer === null) return;
 

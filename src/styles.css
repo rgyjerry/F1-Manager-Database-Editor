@@ -1703,6 +1703,24 @@ body.og-theme .dropdown-menu a:hover {
   padding: 2px 6px;
 }
 
+.button-with-icon.bulk-edit-button {
+  color: var(--text-general);
+  background-color: color-mix(in srgb, var(--new-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--new-primary) 30%, transparent);
+  min-height: 28px;
+}
+
+.button-with-icon.bulk-edit-button i {
+  color: var(--new-primary);
+}
+
+.button-with-icon.bulk-edit-button:hover,
+.button-with-icon.bulk-edit-button:active {
+  color: var(--white-general);
+  border-color: var(--new-primary);
+  background-color: var(--new-primary-transparent);
+}
+
 .attributes-title-actions {
   display: flex;
   align-items: center;
@@ -10732,17 +10750,71 @@ body.og-theme .records-list {
   font-size: 18px;
 }
 
+#numberPromptModal .number-prompt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#numberPromptModal .number-prompt-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 #numberPromptModal .number-prompt-input {
+  flex: 1 1 auto;
   padding: 6px;
-  margin-top: 12px;
+  margin-top: 0;
   max-width: none;
   text-align: left;
-  border-bottom: 2px solid transparent;
-  border-right: 0;
-  border-left: 0;
-  border-top: 0;
-  width: 160px;
+  border: 1px solid color-mix(in srgb, var(--new-primary) 35%, transparent);
+  border-radius: 6px;
+  width: 175px;
   font-size: 18px;
+}
+
+#numberPromptModal .number-prompt-input::-webkit-outer-spin-button,
+#numberPromptModal .number-prompt-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+#numberPromptModal .number-prompt-stepper {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  width: 34px;
+}
+
+#numberPromptModal .number-prompt-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 25px;
+  color: var(--text-general);
+  background-color: var(--elements);
+  border: 1px solid color-mix(in srgb, var(--new-primary) 30%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+#numberPromptModal .number-prompt-step:hover {
+  color: var(--new-primary);
+  border-color: var(--new-primary);
+  background-color: var(--new-primary-transparent);
+}
+
+#numberPromptModal .number-prompt-step:active {
+  transform: scale(0.95);
+}
+
+#numberPromptModal .number-prompt-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 #contractModal .contract-details .unit-and-input {

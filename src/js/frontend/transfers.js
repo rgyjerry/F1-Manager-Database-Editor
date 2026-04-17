@@ -334,7 +334,8 @@ if (bulkContractYearButton) {
             defaultValue: String(fallbackYear),
             min: 2023,
             max: 9999,
-            step: 1
+            step: 1,
+            description: "Use the arrows to move one year at a time, or type a year."
         });
         if (answer === null) return;
 

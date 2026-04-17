@@ -1643,7 +1643,8 @@ if (setMainAttributesButton) {
             defaultValue,
             min: 0,
             max: 100,
-            step: 1
+            step: 1,
+            description: "Use the arrows to adjust by 1, or type a value."
         });
         if (answer === null) return;
 

@@ -805,7 +805,8 @@
                             id="freezeDevelopmentToggle">
                         </div>
                         <label class="form-check-label" style="margin-left: -10px;">Frozen</label>
-                        <div class="button-with-icon compact" id="freezeDevelopmentButton">
+                        <div class="button-with-icon compact bulk-edit-button" id="freezeDevelopmentButton"
+                          title="Freeze or unfreeze AI car development">
                           <i class="bi bi-snow"></i>
                           <span class="button-text">Toggle</span>
                         </div>
@@ -1336,10 +1337,21 @@
         <div class="modal-header custom-header">
           <h3 class="modal-title bold-font" id="numberPromptTitle">Edit value</h3>
         </div>
-        <div class="modal-body custom-body">
+        <div class="modal-body custom-body number-prompt-body">
           <label class="modal-subtitle bold-font" id="numberPromptLabel" for="numberPromptInput">Value</label>
-          <input type="number" class="custom-input-number contract-modal-input number-prompt-input"
-            id="numberPromptInput">
+          <div class="number-prompt-control">
+            <input type="number" class="custom-input-number contract-modal-input number-prompt-input"
+              id="numberPromptInput">
+            <div class="number-prompt-stepper" aria-label="Adjust value">
+              <button type="button" class="number-prompt-step" id="numberPromptUpButton" aria-label="Increase value">
+                <i class="bi bi-chevron-up"></i>
+              </button>
+              <button type="button" class="number-prompt-step" id="numberPromptDownButton" aria-label="Decrease value">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+            </div>
+          </div>
+          <div class="number-prompt-meta" id="numberPromptMeta">Use the arrows or type a value.</div>
         </div>
         <div class="modal-footer custom-footer">
           <div class="d-flex">
@@ -2175,9 +2187,10 @@
                 </li>
               </ul>
             </div>
-            <div class="button-with-icon" id="bulkContractYearButton">
+            <div class="button-with-icon bulk-edit-button" id="bulkContractYearButton"
+              title="Set contract valid-until year">
               <i class="bi bi-calendar2-check"></i>
-              <span>Valid until</span>
+              <span>Set year</span>
             </div>
             <div class="button-with-icon" id="lineupsViewButton">
               <i class="bi bi-diagram-3"></i>
@@ -2698,9 +2711,10 @@
                             </div>
                           </div>
                           <div class="attributes-title-actions">
-                            <div id="setMainAttributesButton" class="button-with-icon">
+                            <div id="setMainAttributesButton" class="button-with-icon bulk-edit-button"
+                              title="Set all main attributes for the selected person">
                               <i class="bi bi-sliders"></i>
-                              <span class="button-text">Set main</span>
+                              <span class="button-text">Set all main</span>
                             </div>
                             <div id="compareButton" class="button-with-icon">
                               <i class="bi bi-arrow-left-right"></i>

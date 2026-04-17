@@ -648,6 +648,64 @@ let numberPromptModal = null;
 let numberPromptElements = null;
 let activeNumberPrompt = null;
 
+function getNumberPromptLimit(input, attr) {
+    const rawValue = input.getAttribute(attr);
+    if (rawValue === null || rawValue === "") return null;
+
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : null;
+}
+
+function getNumberPromptStep(input) {
+    const value = Number(input.getAttribute("step"));
+    return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function getDecimalPlaces(value) {
+    const valueText = String(value);
+    if (valueText.includes("e-")) {
+        return Number(valueText.split("e-")[1]) || 0;
+    }
+
+    const decimalIndex = valueText.indexOf(".");
+    return decimalIndex === -1 ? 0 : valueText.length - decimalIndex - 1;
+}
+
+function formatNumberPromptValue(value, step) {
+    const decimals = Math.min(getDecimalPlaces(step), 6);
+    if (decimals === 0) {
+        return String(Math.round(value));
+    }
+
+    return value.toFixed(decimals);
+}
+
+function adjustNumberPromptValue(direction) {
+    const input = numberPromptElements?.input;
+    if (!input) return;
+
+    const step = getNumberPromptStep(input);
+    const min = getNumberPromptLimit(input, "min");
+    const max = getNumberPromptLimit(input, "max");
+    let value = Number.parseFloat(input.value);
+
+    if (!Number.isFinite(value)) {
+        value = min ?? 0;
+    }
+
+    let nextValue = value + (direction * step);
+    if (min !== null) nextValue = Math.max(min, nextValue);
+    if (max !== null) nextValue = Math.min(max, nextValue);
+
+    const decimals = Math.min(getDecimalPlaces(step), 6);
+    const factor = 10 ** decimals;
+    nextValue = Math.round(nextValue * factor) / factor;
+
+    input.value = formatNumberPromptValue(nextValue, step);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+}
+
 function resolveNumberPrompt(value) {
     if (!activeNumberPrompt) return;
 
@@ -663,10 +721,13 @@ function initNumberPromptModal() {
     const title = document.getElementById("numberPromptTitle");
     const label = document.getElementById("numberPromptLabel");
     const input = document.getElementById("numberPromptInput");
+    const meta = document.getElementById("numberPromptMeta");
+    const incrementButton = document.getElementById("numberPromptUpButton");
+    const decrementButton = document.getElementById("numberPromptDownButton");
     const cancelButton = document.getElementById("numberPromptCancelButton");
     const confirmButton = document.getElementById("numberPromptConfirmButton");
 
-    if (!modalElement || !title || !label || !input || !cancelButton || !confirmButton) {
+    if (!modalElement || !title || !label || !input || !meta || !incrementButton || !decrementButton || !cancelButton || !confirmButton) {
         return null;
     }
 
@@ -685,6 +746,14 @@ function initNumberPromptModal() {
         numberPromptModal.hide();
     });
 
+    incrementButton.addEventListener("click", function () {
+        adjustNumberPromptValue(1);
+    });
+
+    decrementButton.addEventListener("click", function () {
+        adjustNumberPromptValue(-1);
+    });
+
     input.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
             event.preventDefault();
@@ -697,6 +766,14 @@ function initNumberPromptModal() {
             resolveNumberPrompt(null);
             numberPromptModal.hide();
         }
+        else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            adjustNumberPromptValue(1);
+        }
+        else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            adjustNumberPromptValue(-1);
+        }
     });
 
     modalElement.addEventListener("hidden.bs.modal", function () {
@@ -708,11 +785,11 @@ function initNumberPromptModal() {
         input.select();
     });
 
-    numberPromptElements = { modalElement, title, label, input };
+    numberPromptElements = { modalElement, title, label, input, meta };
     return numberPromptElements;
 }
 
-export function showNumberPrompt({ title, label, defaultValue = "", min, max, step = "1", placeholder = "" } = {}) {
+export function showNumberPrompt({ title, label, defaultValue = "", min, max, step = "1", placeholder = "", description = "" } = {}) {
     const elements = initNumberPromptModal();
     if (!elements || !numberPromptModal) {
         new_update_notifications("Editor prompt is unavailable.", "error");
@@ -727,6 +804,11 @@ export function showNumberPrompt({ title, label, defaultValue = "", min, max, st
     elements.label.textContent = label || "Value";
     elements.input.value = defaultValue;
     elements.input.placeholder = placeholder;
+    elements.meta.textContent = description || (
+        min !== undefined && min !== null && max !== undefined && max !== null
+            ? `Allowed range: ${min}-${max}. Use the arrows or type a value.`
+            : "Use the arrows or type a value."
+    );
 
     if (min === undefined || min === null) {
         elements.input.removeAttribute("min");
