@@ -601,6 +601,47 @@ function solveUniformPartPerformance(teamParts, targetOverall, yearIteration = n
     };
 }
 
+function getDesignIDsForTeamPart(teamParts, fittedParts, part) {
+    const designIDs = new Set();
+    const bestDesign = teamParts?.[part]?.[0]?.[0];
+    if (bestDesign !== null && bestDesign !== undefined) {
+        designIDs.add(Number(bestDesign));
+    }
+
+    for (const loadout of [1, 2]) {
+        const fittedDesign = fittedParts?.[loadout]?.[part]?.[0]?.[0];
+        if (fittedDesign !== null && fittedDesign !== undefined) {
+            designIDs.add(Number(fittedDesign));
+        }
+    }
+
+    return Array.from(designIDs).filter((designID) => Number.isFinite(designID));
+}
+
+function upsertDesignStatValue(designID, stat, value, unitValue) {
+    const exists = queryDB(`
+        SELECT 1
+        FROM Parts_Designs_StatValues
+        WHERE DesignID = ?
+          AND PartStat = ?
+    `, [designID, stat], 'singleValue');
+
+    if (exists) {
+        queryDB(`
+            UPDATE Parts_Designs_StatValues
+            SET UnitValue = ?, Value = ?
+            WHERE DesignID = ?
+              AND PartStat = ?
+        `, [unitValue, value, designID, stat], 'run');
+    }
+    else {
+        queryDB(`
+            INSERT INTO Parts_Designs_StatValues
+            VALUES (?, ?, ?, ?, 0.5, 1, 0.1)
+        `, [designID, stat, value, unitValue], 'run');
+    }
+}
+
 export function setOverallPerformanceTeam(teamId, targetOverall, customTeam = null, yearIteration = null) {
     const row = queryDB(`
       SELECT Day
@@ -619,10 +660,12 @@ export function setOverallPerformanceTeam(teamId, targetOverall, customTeam = nu
     }
 
     const solved = solveUniformPartPerformance(teamParts, targetOverall, yearIteration);
+    const fittedParts = getFittedDesigns(customTeam)?.[Number(teamId)] || {};
+    let updatedDesignCount = 0;
 
     for (const part of [3, 4, 5, 6, 7, 8]) {
-        const design = teamParts[part]?.[0]?.[0];
-        if (design === null || design === undefined) continue;
+        const designIDs = getDesignIDsForTeamPart(teamParts, fittedParts, part);
+        if (designIDs.length === 0) continue;
 
         const defaultStats = carConstants.defaultPartsStats?.[part] || [];
         for (const stat of defaultStats) {
@@ -632,31 +675,15 @@ export function setOverallPerformanceTeam(teamId, targetOverall, customTeam = nu
             const value = getValueFromUnitValue(stat, unitValue, yearIteration);
             changeExpertiseBased(part, stat, value, Number(teamId));
 
-            const exists = queryDB(`
-                SELECT 1
-                FROM Parts_Designs_StatValues
-                WHERE DesignID = ?
-                  AND PartStat = ?
-            `, [design, stat], 'singleValue');
-
-            if (exists) {
-                queryDB(`
-                    UPDATE Parts_Designs_StatValues
-                    SET UnitValue = ?, Value = ?
-                    WHERE DesignID = ?
-                      AND PartStat = ?
-                `, [unitValue, value, design, stat], 'run');
-            }
-            else {
-                queryDB(`
-                    INSERT INTO Parts_Designs_StatValues
-                    VALUES (?, ?, ?, ?, 0.5, 1, 0.1)
-                `, [design, stat, value, unitValue], 'run');
-            }
+            designIDs.forEach((designID) => {
+                upsertDesignStatValue(designID, stat, value, unitValue);
+            });
         }
+
+        updatedDesignCount += designIDs.length;
     }
 
-    return solved;
+    return { ...solved, updatedDesignCount };
 }
 
 /**
@@ -1870,4 +1897,3 @@ export function deleteCustomEngineAndReassign(engineIdRaw, fallbackEngineIdRaw) 
 
     return { ok: true, fallbackEngineId, reassignedTeams: teamsSupplied.length };
 }
-

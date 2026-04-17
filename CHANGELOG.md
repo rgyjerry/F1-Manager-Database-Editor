@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.10 - 2026-04-17
+
+### Fixed
+
+- Fixed team overall performance edits so fitted car loadout parts are updated along with latest team designs, keeping in-game performance rankings aligned with the editor.
+
 ## 3.5.10-local.9 - 2026-04-17
 
 ### Changed
