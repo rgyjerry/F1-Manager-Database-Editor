@@ -17,11 +17,11 @@ import { getPerformanceAllTeamsSeason, getAttributesAllTeams, getPerformanceAllC
 import { setDatabase, getMetadata, getDatabase } from "./dbManager";
 import { fetchHead2Head, fetchHead2HeadTeam } from "./scriptUtils/head2head";
 import { editTeam, fetchTeamData } from "./scriptUtils/editTeamUtils";
-import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise } from "./scriptUtils/carAnalysisUtils";
+import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise, setOverallPerformanceTeam } from "./scriptUtils/carAnalysisUtils";
 import { setGlobals, getGlobals } from "./commandGlobals";
-import { editAge, editMarketability, editName, editRetirement, editSuperlicense, editCode, editMentality, editStats, setAllDriversStatsTo85 } from "./scriptUtils/eidtStatsUtils";
+import { editAge, editMarketability, editName, editRetirement, editSuperlicense, editCode, editMentality, editStats, setAllDriversStatsTo85, setMainStatsForStaff } from "./scriptUtils/eidtStatsUtils";
 import { editCalendar, fetchCalendar } from "./scriptUtils/calendarUtils";
-import { fireDriver, hireDriver, swapDrivers, editContract, futureContract, transferJuniorDriver, CONTRACT_PLACEHOLDERS_24 } from "./scriptUtils/transferUtils";
+import { fireDriver, hireDriver, swapDrivers, editContract, futureContract, transferJuniorDriver, CONTRACT_PLACEHOLDERS_24, bulkUpdateCurrentGridContractEndSeason } from "./scriptUtils/transferUtils";
 import { change2024Standings, changeDriverLineUps, changeStats, removeFastestLap, timeTravelWithData, manageAffiliates, changeRaces, manageStandings, 
   insertStaff2025, manageFeederSeries, changeDriverEngineerPairs, updatePerofmrnace2025, fixes_mod,
   change2025Standings, 
@@ -344,6 +344,15 @@ const workerCommands = {
       unlocksDownload: true
     });
   },
+  setMainAttributes: (data, postMessage) => {
+    const count = setMainStatsForStaff(data.driverID, data.typeStaff, data.value);
+    postMessage({
+      responseMessage: "Main attributes updated",
+      noti_msg: `Updated ${count} main attributes for ${data.driver}`,
+      isEditCommand: true,
+      unlocksDownload: true
+    });
+  },
   fetchRandomStaffDraft: (data, postMessage) => {
     const yearData = checkYearSave();
     const draft = fetchRandomStaffDraft(data.typeStaff, yearData[0]);
@@ -436,6 +445,40 @@ const workerCommands = {
     };
     postMessage(carPerformanceResponse);
   },
+  setTeamOverallPerformance: (data, postMessage) => {
+    const globals = getGlobals();
+    const yearData = checkYearSave();
+    const result = setOverallPerformanceTeam(data.teamID, data.overall, globals.isCreateATeam, globals.yearIteration);
+    const requestedOverall = Number(data.overall).toFixed(2);
+    const projectedOverall = Number(result.projectedOverall).toFixed(2);
+
+    const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
+    postMessage({
+      responseMessage: "Season performance fetched",
+      content: [performance, races, engineUpgradeRaceIds],
+      noti_msg: `Set ${teamReplaceDict[data.teamName] || data.teamName}'s target performance to ${requestedOverall}% (${projectedOverall}% projected)`
+    });
+
+    const attributes = getAttributesAllTeams(yearData[2]);
+    postMessage({ responseMessage: "Performance fetched", content: [performance[performance.length - 1], attributes] });
+
+    const carPerformance = getPerformanceAllCars(yearData[2]);
+    const carAttributes = getAttributesAllCars(yearData[2]);
+    postMessage({
+      responseMessage: "Cars fetched",
+      content: [carPerformance, carAttributes],
+      isEditCommand: true,
+      unlocksDownload: true
+    });
+
+    const designDict = getPartsFromTeam(data.teamID);
+    const unitValues = getUnitValueFromParts(designDict);
+    const allParts = getAllPartsFromTeam(data.teamID);
+    const maxDesign = getMaxDesign();
+    const expertise = getTeamExpertise(data.teamID, globals.yearIteration);
+    postMessage({ responseMessage: "Parts stats fetched", content: [unitValues, allParts, maxDesign, expertise] });
+  },
   editEngine: (data, postMessage) => {
     snapshotEnginePowerProgression(Object.keys(data?.engines || {}), 'pre_engine_edit');
     editEngines(data.engines)
@@ -469,6 +512,25 @@ const workerCommands = {
       isEditCommand: true,
       unlocksDownload: true
     });
+  },
+  bulkContractEndSeason: (data, postMessage) => {
+    const mode = data.mode === "staff" ? "staff" : "drivers";
+    const count = bulkUpdateCurrentGridContractEndSeason(data.year, mode);
+    const label = mode === "staff" ? "staff" : "drivers";
+
+    postMessage({
+      responseMessage: "Bulk contracts updated",
+      noti_msg: `Updated ${count} current-grid ${label} contracts to end in ${data.year}`,
+      isEditCommand: true,
+      unlocksDownload: true
+    });
+
+    const yearData = checkYearSave();
+    const drivers = fetchDrivers(yearData[0]);
+    postMessage({ responseMessage: "Drivers fetched", content: drivers });
+
+    const staff = fetchStaff(yearData[0]);
+    postMessage({ responseMessage: "Staff fetched", content: staff });
   },
   editCalendar: (data, postMessage) => {
     const year = getGlobals().yearIteration;

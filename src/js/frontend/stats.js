@@ -1,8 +1,9 @@
 import { inverted_countries_abreviations } from "../backend/scriptUtils/countries";
 import { team_dict, mentalityModifiers, teamOrder, mentality_dict, combined_dict, logos_disc } from "./config";
 import { colors_dict } from "./head2head";
-import { attachHold } from "./renderer";
+import { attachHold, new_update_notifications } from "./renderer";
 import { insert_space, manageColor, format_name } from "./transfers";
+import { Command } from "../backend/command.js";
 import Chart from 'chart.js/auto';
 
 
@@ -22,6 +23,7 @@ let secondDriverStats = null;
 let numbersAvailable = [];
 
 const compareButton = document.getElementById('compareButton');
+const setMainAttributesButton = document.getElementById("setMainAttributesButton");
 const addStaffButton = document.getElementById("addStaffButton");
 const addStaffTypeDropdown = document.getElementById("addStaffTypeDropdown");
 const draftStaffTypeControl = document.getElementById("draftStaffTypeControl");
@@ -1647,6 +1649,61 @@ function toggleComparisonMode() {
             separator.classList.remove("d-none");
         });
     }
+}
+
+if (setMainAttributesButton) {
+    setMainAttributesButton.addEventListener("click", function () {
+        if (isComparisonModeActive) toggleComparisonMode();
+
+        const selected = document.querySelector(".normal-driver.clicked");
+        if (!selected) {
+            new_update_notifications("Select a driver or staff member first.", "error");
+            return;
+        }
+
+        const defaultValue = document.getElementById("ovrholder")?.textContent || "85";
+        const answer = window.prompt(`Set all main attributes for ${selected.dataset.name}`, defaultValue);
+        if (answer === null) return;
+
+        const value = Number.parseInt(String(answer).trim(), 10);
+        if (!Number.isInteger(value) || value < 0 || value > 100) {
+            new_update_notifications("Enter an attribute value from 0 to 100.", "error");
+            return;
+        }
+
+        const activePanel = document.querySelector(".main-panel-stats:not(.d-none)");
+        if (!activePanel) {
+            new_update_notifications("No active main attribute panel found.", "error");
+            return;
+        }
+
+        activePanel.querySelectorAll(".custom-input-number").forEach((input) => {
+            input.value = value;
+            manage_stat_bar(input, value);
+        });
+
+        let stats = "";
+        document.querySelectorAll(".elegible").forEach(function (elem) {
+            stats += elem.value + " ";
+        });
+        stats = stats.trim();
+
+        selected.dataset.stats = stats;
+        const newOverall = calculateOverall(stats, typeOverall);
+        const overallSpan = selected.querySelector(".small-ovr span");
+        if (overallSpan) overallSpan.textContent = newOverall;
+        load_stats(selected);
+        recalculateOverall();
+
+        const driverName = getName(selected.querySelector(".name-div-edit-stats"));
+        const command = new Command("setMainAttributes", {
+            driverID: selected.dataset.driverid,
+            driver: driverName,
+            typeStaff: selected.dataset.type,
+            value
+        });
+        command.execute();
+    });
 }
 
 if (compareButton) {

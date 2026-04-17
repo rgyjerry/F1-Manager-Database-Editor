@@ -2,6 +2,13 @@ import { queryDB } from "../dbManager";
 
 // Constantes para referencias en la edición de mentalidad
 export const driverStats = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+export const mainStatsByStaffType = {
+  "0": driverStats,
+  "1": [0, 1, 14, 15, 16, 17],
+  "2": [13, 25, 43],
+  "3": [19, 20, 26, 27, 28, 29, 30, 31],
+  "4": [11, 22, 23, 24]
+};
 
 export const mentalityAreas = {
   0: [5, 11, 13, 9],
@@ -207,6 +214,42 @@ export function editStats(driverID, type, stats, retirement, driverNum, wants1) 
       WHERE StaffID = ?
     `, [retirement, driverID], 'run');
   }
+}
+
+export function setMainStatsForStaff(staffID, type, value) {
+  const safeStaffID = Number.parseInt(String(staffID), 10);
+  const statValue = Math.max(0, Math.min(100, Number.parseInt(String(value), 10)));
+  const statIDs = mainStatsByStaffType[String(type)] || [];
+
+  if (!Number.isInteger(safeStaffID) || !Number.isFinite(statValue) || statIDs.length === 0) {
+    return 0;
+  }
+
+  statIDs.forEach((statID) => {
+    const exists = queryDB(`
+      SELECT 1
+      FROM Staff_performanceStats
+      WHERE StaffID = ?
+        AND StatID = ?
+    `, [safeStaffID, statID], "singleValue");
+
+    if (exists) {
+      queryDB(`
+        UPDATE Staff_performanceStats
+        SET Val = ?
+        WHERE StaffID = ?
+          AND StatID = ?
+      `, [statValue, safeStaffID, statID], "run");
+    }
+    else {
+      queryDB(`
+        INSERT INTO Staff_performanceStats (StaffID, StatID, Val, Max)
+        VALUES (?, ?, ?, 100)
+      `, [safeStaffID, statID, statValue], "run");
+    }
+  });
+
+  return statIDs.length;
 }
 
 export function changeDriverNumber(driverID, newNumber) {

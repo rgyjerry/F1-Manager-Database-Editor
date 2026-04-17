@@ -1792,6 +1792,13 @@ document.getElementById("freezeDevelopmentToggle").addEventListener("change", fu
     update_development_span(value)
 });
 
+document.getElementById("freezeDevelopmentButton")?.addEventListener("click", function () {
+    const toggle = document.getElementById("freezeDevelopmentToggle");
+    if (!toggle) return;
+    toggle.checked = !toggle.checked;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+});
+
 function update_development_span(value) {
     let span = document.querySelector("#developmentSpan")
     if (value) {
@@ -1801,6 +1808,16 @@ function update_development_span(value) {
         span.className = "option-state default"
         span.textContent = "Active"
     }
+    update_development_button(value)
+}
+
+function update_development_button(value) {
+    const button = document.getElementById("freezeDevelopmentButton");
+    if (!button) return;
+    const text = button.querySelector(".button-text");
+    const icon = button.querySelector("i");
+    if (text) text.textContent = value ? "Unfreeze" : "Freeze";
+    if (icon) icon.className = value ? "bi bi-play-fill" : "bi bi-snow";
 }
 
 function manage_difficulty_warnings(level, triggerList) {

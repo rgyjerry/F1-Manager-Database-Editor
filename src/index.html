@@ -791,7 +791,7 @@
                         <label class="form-check-label" style="margin-left: -10px;">Active</label>
                       </div>
                     </div>
-                    <div class="only-development d-none">
+                    <div class="only-development">
                       <div class="modal-subtitle bold-font">Car development <span class="option-state default"
                           id="developmentSpan">Active</span></div>
                       <div class="modal-text">
@@ -805,6 +805,10 @@
                             id="freezeDevelopmentToggle">
                         </div>
                         <label class="form-check-label" style="margin-left: -10px;">Frozen</label>
+                        <div class="button-with-icon compact" id="freezeDevelopmentButton">
+                          <i class="bi bi-snow"></i>
+                          <span class="button-text">Toggle</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2151,6 +2155,10 @@
                 </li>
               </ul>
             </div>
+            <div class="button-with-icon" id="bulkContractYearButton">
+              <i class="bi bi-calendar2-check"></i>
+              <span>Valid until</span>
+            </div>
             <div class="button-with-icon" id="lineupsViewButton">
               <i class="bi bi-diagram-3"></i>
               <span>Line ups</span>
@@ -2664,9 +2672,15 @@
                               </ul>
                             </div>
                           </div>
-                          <div id="compareButton" class="button-with-icon">
-                            <i class="bi bi-arrow-left-right"></i>
-                            <span class="button-text">Compare</span>
+                          <div class="attributes-title-actions">
+                            <div id="setMainAttributesButton" class="button-with-icon">
+                              <i class="bi bi-sliders"></i>
+                              <span class="button-text">Set main</span>
+                            </div>
+                            <div id="compareButton" class="button-with-icon">
+                              <i class="bi bi-arrow-left-right"></i>
+                              <span class="button-text">Compare</span>
+                            </div>
                           </div>
                         </div>
                         <div class="main-panel-stats main-attributes" id="driverStats">

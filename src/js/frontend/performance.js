@@ -2,7 +2,7 @@ import { races_names, part_codes_abreviations, codes_dict, combined_dict, races_
     theme_colors
   } from "./config";
 import { colors_dict, get_colors_dict } from "./head2head";
-import { manageSaveButton, game_version, attachHold, first_show_animation, selectedTheme, confirmModal } from "./renderer";
+import { manageSaveButton, game_version, attachHold, first_show_animation, selectedTheme, confirmModal, new_update_notifications } from "./renderer";
 import { Command } from "../backend/command.js";
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -445,6 +445,45 @@ function removeSelected() {
         item.classList.remove('selected')
     });
 }
+
+function setupTeamOverallButtons() {
+    document.querySelectorAll("#teamsDiv .team-performance").forEach(function (teamElem) {
+        const title = teamElem.querySelector(".team-title");
+        if (!title || title.querySelector(".team-overall-button")) return;
+
+        const button = document.createElement("div");
+        button.className = "button-with-icon compact team-overall-button";
+        button.title = "Set overall performance";
+        button.innerHTML = `<i class="bi bi-magic"></i><span>Set</span>`;
+
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const teamName = teamElem.dataset.teamname || "team";
+            const currentOverall = teamElem.querySelector(".performance-bar-progress")?.dataset?.overall || "85";
+            const answer = window.prompt(`Set overall performance for ${teamName}`, String(Number(currentOverall).toFixed(2)));
+            if (answer === null) return;
+
+            const overall = Number.parseFloat(String(answer).trim());
+            if (!Number.isFinite(overall) || overall < 0 || overall > 100) {
+                new_update_notifications("Enter a performance value from 0 to 100.", "error");
+                return;
+            }
+
+            const command = new Command("setTeamOverallPerformance", {
+                teamID: teamElem.dataset.teamid,
+                teamName,
+                overall
+            });
+            command.execute();
+        });
+
+        title.appendChild(button);
+    });
+}
+
+setupTeamOverallButtons();
 
 /**
  * eventListeners for all teams and engines
@@ -1728,5 +1767,3 @@ function createPerformanceChart(labelsArray) {
         }
     );
 }
-
-

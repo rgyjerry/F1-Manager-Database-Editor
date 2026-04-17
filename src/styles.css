@@ -1697,6 +1697,18 @@ body.og-theme .dropdown-menu a:hover {
   border-radius: 5px;
 }
 
+.button-with-icon.compact {
+  gap: 6px;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+
+.attributes-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .button-with-icon.close-modal{
   padding: 3px 7px;
 }
@@ -10955,6 +10967,25 @@ input[type='number'] {
   align-items: center;
   font-size: 18px;
   justify-content: space-between;
+  gap: 6px;
+}
+
+.team-title-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.team-overall-button {
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.team-overall-button span {
+  font-size: 12px;
 }
 
 .team-performance:hover .team-title-value {
@@ -10968,6 +10999,7 @@ input[type='number'] {
 .team-title-value {
   color: var(--dark-text);
   transition: color 0.15s;
+  margin-left: auto;
 }
 
 .car:hover .main-car,

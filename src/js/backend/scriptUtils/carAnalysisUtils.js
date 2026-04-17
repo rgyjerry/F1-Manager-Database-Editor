@@ -510,6 +510,155 @@ export function convertPercentageToValue(attribute, percentage, minMax) {
     return minValue + (maxValue - minValue) * (percentage / 100.0);
 }
 
+function clampPerformancePercent(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.max(0, Math.min(100, numeric));
+}
+
+function getUnitValueRange(stat) {
+    const range = carConstants.statsMinMax?.[stat];
+    if (Array.isArray(range) && range.length >= 2) {
+        return [Number(range[0]), Number(range[1])];
+    }
+    return [0, 100];
+}
+
+function getUnitValueForPerformance(stat, percent) {
+    const [minValue, maxValue] = getUnitValueRange(stat);
+    return minValue + (maxValue - minValue) * (percent / 100);
+}
+
+function getValueFromUnitValue(stat, unitValue, yearIteration = null) {
+    const statNumber = Number(stat);
+    if (yearIteration === "24" && statNumber >= 7 && statNumber <= 9 && carConstants.downforce24UnitValueToValue?.[statNumber]) {
+        return carConstants.downforce24UnitValueToValue[statNumber](unitValue);
+    }
+
+    const converter = carConstants.unitValueToValue?.[statNumber];
+    return typeof converter === "function" ? converter(unitValue) : unitValue;
+}
+
+function cloneCarStatsDict(carStats) {
+    const clone = {};
+    for (const part of Object.keys(carStats || {})) {
+        clone[part] = { ...carStats[part] };
+    }
+    return clone;
+}
+
+function buildUniformPerformanceStats(teamParts, percent, yearIteration = null) {
+    const carStats = cloneCarStatsDict(getCarStats(teamParts));
+    for (const part of [3, 4, 5, 6, 7, 8]) {
+        const partStats = carStats[part] || {};
+        const defaultStats = carConstants.defaultPartsStats?.[part] || [];
+        for (const stat of defaultStats) {
+            if (Number(stat) === 15) continue;
+            const unitValue = getUnitValueForPerformance(stat, percent);
+            partStats[stat] = getValueFromUnitValue(stat, unitValue, yearIteration);
+        }
+        carStats[part] = partStats;
+    }
+    return carStats;
+}
+
+function calculateUniformPerformanceOverall(teamParts, percent, yearIteration = null) {
+    const contributors = getContributorsDict();
+    const carStats = buildUniformPerformanceStats(teamParts, percent, yearIteration);
+    const partStats = getPartStatsDict(carStats);
+    const attributes = calculateCarAttributes(contributors, partStats);
+    return calculateOverallPerformance(attributes);
+}
+
+function solveUniformPartPerformance(teamParts, targetOverall, yearIteration = null) {
+    const target = clampPerformancePercent(targetOverall);
+    const lowOverall = calculateUniformPerformanceOverall(teamParts, 0, yearIteration);
+    const highOverall = calculateUniformPerformanceOverall(teamParts, 100, yearIteration);
+
+    if (target <= lowOverall) {
+        return { uniformPercent: 0, projectedOverall: lowOverall };
+    }
+    if (target >= highOverall) {
+        return { uniformPercent: 100, projectedOverall: highOverall };
+    }
+
+    let low = 0;
+    let high = 100;
+    for (let i = 0; i < 32; i++) {
+        const mid = (low + high) / 2;
+        const midOverall = calculateUniformPerformanceOverall(teamParts, mid, yearIteration);
+        if (midOverall < target) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+
+    const uniformPercent = Math.round(((low + high) / 2) * 1000) / 1000;
+    return {
+        uniformPercent,
+        projectedOverall: calculateUniformPerformanceOverall(teamParts, uniformPercent, yearIteration)
+    };
+}
+
+export function setOverallPerformanceTeam(teamId, targetOverall, customTeam = null, yearIteration = null) {
+    const row = queryDB(`
+      SELECT Day
+      FROM Player_State
+    `, [], 'singleRow');
+
+    if (!row) {
+        throw new Error("Player_State not found");
+    }
+
+    const [day] = row;
+    const bestParts = getBestPartsUntil(day, customTeam);
+    const teamParts = bestParts[Number(teamId)];
+    if (!teamParts) {
+        throw new Error(`Team ${teamId} parts not found`);
+    }
+
+    const solved = solveUniformPartPerformance(teamParts, targetOverall, yearIteration);
+
+    for (const part of [3, 4, 5, 6, 7, 8]) {
+        const design = teamParts[part]?.[0]?.[0];
+        if (design === null || design === undefined) continue;
+
+        const defaultStats = carConstants.defaultPartsStats?.[part] || [];
+        for (const stat of defaultStats) {
+            if (Number(stat) === 15) continue;
+
+            const unitValue = getUnitValueForPerformance(stat, solved.uniformPercent);
+            const value = getValueFromUnitValue(stat, unitValue, yearIteration);
+            changeExpertiseBased(part, stat, value, Number(teamId));
+
+            const exists = queryDB(`
+                SELECT 1
+                FROM Parts_Designs_StatValues
+                WHERE DesignID = ?
+                  AND PartStat = ?
+            `, [design, stat], 'singleValue');
+
+            if (exists) {
+                queryDB(`
+                    UPDATE Parts_Designs_StatValues
+                    SET UnitValue = ?, Value = ?
+                    WHERE DesignID = ?
+                      AND PartStat = ?
+                `, [unitValue, value, design, stat], 'run');
+            }
+            else {
+                queryDB(`
+                    INSERT INTO Parts_Designs_StatValues
+                    VALUES (?, ?, ?, ?, 0.5, 1, 0.1)
+                `, [design, stat, value, unitValue], 'run');
+            }
+        }
+    }
+
+    return solved;
+}
+
 /**
  * Pasa todos los atributos a rango human-readable
  * (make_attributes_readable en Python)
@@ -1721,5 +1870,4 @@ export function deleteCustomEngineAndReassign(engineIdRaw, fallbackEngineIdRaw) 
 
     return { ok: true, fallbackEngineId, reassignedTeams: teamsSupplied.length };
 }
-
 

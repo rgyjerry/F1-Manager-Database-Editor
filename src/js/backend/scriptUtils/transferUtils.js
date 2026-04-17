@@ -725,6 +725,48 @@ export function editContract(driverID,salary,endSeason,startingBonus,raceBonus,r
   }
 }
 
+export function bulkUpdateCurrentGridContractEndSeason(endSeason, mode = "drivers") {
+  const contractEndSeason = toContractInt(endSeason, CONTRACT_PLACEHOLDERS_24.endSeason);
+  const staffTypeClause = mode === "staff" ? "gam.StaffType != 0" : "gam.StaffType = 0";
+  const params = [contractEndSeason];
+
+  const countWhereClause = `
+    con.ContractType = 0
+    AND (con.TeamID BETWEEN 1 AND 10 OR con.TeamID = 32)
+    AND EXISTS (
+      SELECT 1
+      FROM Staff_GameData gam
+      WHERE gam.StaffID = con.StaffID
+        AND ${staffTypeClause}
+    )
+  `;
+
+  const updateWhereClause = `
+    ContractType = 0
+    AND (TeamID BETWEEN 1 AND 10 OR TeamID = 32)
+    AND EXISTS (
+      SELECT 1
+      FROM Staff_GameData gam
+      WHERE gam.StaffID = Staff_Contracts.StaffID
+        AND ${staffTypeClause}
+    )
+  `;
+
+  const count = queryDB(`
+    SELECT COUNT(*)
+    FROM Staff_Contracts con
+    WHERE ${countWhereClause}
+  `, [], "singleValue") || 0;
+
+  queryDB(`
+    UPDATE Staff_Contracts
+    SET EndSeason = ?
+    WHERE ${updateWhereClause}
+  `, params, "run");
+
+  return count;
+}
+
 export function futureContract(teamID,driverID,salary,endSeason,startingBonus,raceBonus,raceBonusTargetPos,position,yearIteration = "24") {
   let safeDriverID = toContractInt(driverID, 0);
   const requestedTeamID = toContractInt(teamID, CONTRACT_PLACEHOLDERS_24.teamID);

@@ -4,6 +4,15 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.6 - 2026-04-17
+
+### Added
+
+- Added Current grid bulk contract end-year editing for drivers, reserve drivers, and staff.
+- Added per-person main-attribute bulk editing on the Attributes page for drivers and staff roles.
+- Added one-click per-team overall performance editing with even part-stat distribution.
+- Added a visible Game settings control to freeze or unfreeze AI car-part development.
+
 ## 3.5.10-local.5 - 2026-04-17
 
 ### Changed
