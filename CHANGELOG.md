@@ -4,6 +4,13 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.3 - 2026-04-17
+
+### Security
+
+- Rewrote repository history to replace a previously committed Google API key value in `src/js/frontend/news.js`.
+- Verified the current source and rewritten local refs no longer contain Google API key patterns.
+
 ## 3.5.10-local.2 - 2026-04-17
 
 ### Removed
