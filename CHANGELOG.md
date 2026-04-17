@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.11 - 2026-04-17
+
+### Fixed
+
+- Fixed malformed in-game inbox staff update messages by removing rows with invalid sender placeholders and adding a narrow save trigger to suppress future broken inserts.
+
 ## 3.5.10-local.10 - 2026-04-17
 
 ### Fixed

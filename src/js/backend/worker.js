@@ -39,7 +39,7 @@ import { teamReplaceDict } from "./commandGlobals";
 import { excelToDate } from "./scriptUtils/eidtStatsUtils";
 import { analyzeFileToDatabase, repack } from "./UESaveHandler";
 import { fetchRegulationsData, updateRegulations } from "./scriptUtils/regulationsUtils.js";
-import { deleteProblematicTriggers } from "./scriptUtils/triggerUtils.js";
+import { cleanupBrokenInboxMessages, deleteProblematicTriggers } from "./scriptUtils/triggerUtils.js";
 import { fetchCountryLocaleForCode, fetchRandomDraftForename, fetchRandomStaffDraft } from "./scriptUtils/createStaffUtils.js";
 
 import initSqlJs from 'sql.js';
@@ -66,6 +66,8 @@ const workerCommands = {
     postMessage({ responseMessage: "Database loaded", content: date });
   },
   exportSave: async (data, postMessage) => {
+    cleanupBrokenInboxMessages();
+
     const db = getDatabase();
     const metadata = getMetadata();
 
@@ -75,6 +77,7 @@ const workerCommands = {
   },
   panicDownload: async (data, postMessage) => {
     deleteProblematicTriggers();
+    cleanupBrokenInboxMessages();
 
     const db = getDatabase();
     const metadata = getMetadata();
@@ -620,6 +623,7 @@ const workerCommands = {
     if (data.mod === "2026"){
       changeDriverNumbers2026();
     }
+    cleanupBrokenInboxMessages();
     postMessage({
       responseMessage: "Time travel",
       isEditCommand: true,
@@ -636,6 +640,7 @@ const workerCommands = {
     else if (data.mod === "2026"){
       changeLineUps2026();
     }
+    cleanupBrokenInboxMessages();
     postMessage({
       responseMessage: "Line ups changed",
       isEditCommand: true,

@@ -1,5 +1,12 @@
 import { queryDB } from "../dbManager";
 
+const mailCleanupTriggerNames = [
+  "cleanup_invalid_mail_inbox_insert",
+  "cleanup_invalid_mail_inbox_update",
+  "cleanup_invalid_mail_section_insert",
+  "cleanup_invalid_mail_section_update"
+];
+
 const difficultyDict = {
   0: {
     name: "default",
@@ -50,6 +57,190 @@ const difficultyDict = {
     research: 65
   }
 };
+
+function tableExists(tableName) {
+  return !!queryDB(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+    [tableName],
+    "singleValue"
+  );
+}
+
+function requiredMailTablesExist() {
+  return [
+    "Mail_Inbox",
+    "Mail_Inbox_Sections",
+    "Mail_Inbox_Links",
+    "Mail_Inbox_Attachments",
+    "Mail_Inbox_AttachmentStats",
+    "Mail_Inbox_AttachmentStats_StringValues",
+    "Mail_Inbox_AttachmentStats_Values"
+  ].every(tableExists);
+}
+
+function deleteMailRows(mailIDs) {
+  const ids = Array.from(new Set((mailIDs || []).map(Number)))
+    .filter((mailID) => Number.isInteger(mailID) && mailID > 0);
+
+  if (!ids.length || !requiredMailTablesExist()) {
+    return 0;
+  }
+
+  const idList = ids.join(", ");
+
+  queryDB(`
+    DELETE FROM Mail_Inbox_AttachmentStats_StringValues
+    WHERE AttachmentStatID IN (
+      SELECT mas.AttachmentStatID
+      FROM Mail_Inbox_AttachmentStats mas
+      JOIN Mail_Inbox_Attachments mia ON mia.AttachmentID = mas.AttachmentID
+      WHERE mia.MailID IN (${idList})
+    )
+  `, [], "run");
+
+  queryDB(`
+    DELETE FROM Mail_Inbox_AttachmentStats_Values
+    WHERE AttachmentStatID IN (
+      SELECT mas.AttachmentStatID
+      FROM Mail_Inbox_AttachmentStats mas
+      JOIN Mail_Inbox_Attachments mia ON mia.AttachmentID = mas.AttachmentID
+      WHERE mia.MailID IN (${idList})
+    )
+  `, [], "run");
+
+  queryDB(`
+    DELETE FROM Mail_Inbox_AttachmentStats
+    WHERE AttachmentID IN (
+      SELECT AttachmentID
+      FROM Mail_Inbox_Attachments
+      WHERE MailID IN (${idList})
+    )
+  `, [], "run");
+
+  queryDB(`DELETE FROM Mail_Inbox_Attachments WHERE MailID IN (${idList})`, [], "run");
+  queryDB(`DELETE FROM Mail_Inbox_Links WHERE MailID IN (${idList})`, [], "run");
+  queryDB(`DELETE FROM Mail_Inbox_Sections WHERE MailID IN (${idList})`, [], "run");
+  queryDB(`DELETE FROM Mail_Inbox WHERE MailID IN (${idList})`, [], "run");
+
+  return ids.length;
+}
+
+function mailCleanupStatements(mailIDExpression) {
+  return `
+    DELETE FROM Mail_Inbox_AttachmentStats_StringValues
+    WHERE AttachmentStatID IN (
+      SELECT mas.AttachmentStatID
+      FROM Mail_Inbox_AttachmentStats mas
+      JOIN Mail_Inbox_Attachments mia ON mia.AttachmentID = mas.AttachmentID
+      WHERE mia.MailID = ${mailIDExpression}
+    );
+
+    DELETE FROM Mail_Inbox_AttachmentStats_Values
+    WHERE AttachmentStatID IN (
+      SELECT mas.AttachmentStatID
+      FROM Mail_Inbox_AttachmentStats mas
+      JOIN Mail_Inbox_Attachments mia ON mia.AttachmentID = mas.AttachmentID
+      WHERE mia.MailID = ${mailIDExpression}
+    );
+
+    DELETE FROM Mail_Inbox_AttachmentStats
+    WHERE AttachmentID IN (
+      SELECT AttachmentID
+      FROM Mail_Inbox_Attachments
+      WHERE MailID = ${mailIDExpression}
+    );
+
+    DELETE FROM Mail_Inbox_Attachments WHERE MailID = ${mailIDExpression};
+    DELETE FROM Mail_Inbox_Links WHERE MailID = ${mailIDExpression};
+    DELETE FROM Mail_Inbox_Sections WHERE MailID = ${mailIDExpression};
+    DELETE FROM Mail_Inbox WHERE MailID = ${mailIDExpression};
+  `;
+}
+
+function dropBrokenInboxCleanupTriggers() {
+  for (const triggerName of mailCleanupTriggerNames) {
+    queryDB(`DROP TRIGGER IF EXISTS ${triggerName}`, [], "run");
+  }
+}
+
+function installBrokenInboxCleanupTriggers() {
+  dropBrokenInboxCleanupTriggers();
+
+  if (!requiredMailTablesExist()) {
+    return false;
+  }
+
+  const inboxBrokenCondition = `
+    NEW.Subject LIKE '%invalid senderStaffID%'
+    OR NEW.SenderName LIKE '%invalid senderStaffID%'
+    OR NEW.SenderSubLabel LIKE '%invalid senderStaffID%'
+    OR NEW.SenderIcon LIKE '%invalid senderStaffID%'
+  `;
+
+  const sectionBrokenCondition = `
+    NEW.Title LIKE '%invalid senderStaffID%'
+    OR NEW.Text LIKE '%invalid senderStaffID%'
+    OR NEW.Title LIKE '%Sender=Gender={0}%'
+    OR NEW.Text LIKE '%Sender=Gender={0}%'
+  `;
+
+  for (const [triggerName, action] of [
+    ["cleanup_invalid_mail_inbox_insert", "INSERT"],
+    ["cleanup_invalid_mail_inbox_update", "UPDATE"]
+  ]) {
+    queryDB(`
+      CREATE TRIGGER ${triggerName}
+      AFTER ${action} ON Mail_Inbox
+      FOR EACH ROW
+      WHEN ${inboxBrokenCondition}
+      BEGIN
+        ${mailCleanupStatements("NEW.MailID")}
+      END;
+    `, [], "run");
+  }
+
+  for (const [triggerName, action] of [
+    ["cleanup_invalid_mail_section_insert", "INSERT"],
+    ["cleanup_invalid_mail_section_update", "UPDATE"]
+  ]) {
+    queryDB(`
+      CREATE TRIGGER ${triggerName}
+      AFTER ${action} ON Mail_Inbox_Sections
+      FOR EACH ROW
+      WHEN ${sectionBrokenCondition}
+      BEGIN
+        ${mailCleanupStatements("NEW.MailID")}
+      END;
+    `, [], "run");
+  }
+
+  return true;
+}
+
+export function cleanupBrokenInboxMessages() {
+  if (!requiredMailTablesExist()) {
+    return { removed: 0, triggersInstalled: false };
+  }
+
+  const brokenRows = queryDB(`
+    SELECT DISTINCT mi.MailID
+    FROM Mail_Inbox mi
+    LEFT JOIN Mail_Inbox_Sections mis ON mis.MailID = mi.MailID
+    WHERE mi.Subject LIKE '%invalid senderStaffID%'
+      OR mi.SenderName LIKE '%invalid senderStaffID%'
+      OR mi.SenderSubLabel LIKE '%invalid senderStaffID%'
+      OR mi.SenderIcon LIKE '%invalid senderStaffID%'
+      OR mis.Title LIKE '%invalid senderStaffID%'
+      OR mis.Text LIKE '%invalid senderStaffID%'
+      OR mis.Title LIKE '%Sender=Gender={0}%'
+      OR mis.Text LIKE '%Sender=Gender={0}%'
+  `, [], "allRows") || [];
+
+  const removed = deleteMailRows(brokenRows.map((row) => row[0]));
+  const triggersInstalled = installBrokenInboxCleanupTriggers();
+
+  return { removed, triggersInstalled };
+}
 
 
 const invertedDifficultyDict = Object.fromEntries(
