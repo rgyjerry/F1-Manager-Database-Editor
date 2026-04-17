@@ -16,6 +16,7 @@ let editStatsItems = [];
 let timer;
 let statsRadarChart = null;
 const clearIcon2 = document.querySelector("#filterContainer .bi-x");
+let activeStatsCategoryFilter = null;
 
 let isComparisonModeActive = false;
 let firstDriverStats = null;
@@ -30,6 +31,7 @@ const draftStaffTypeControl = document.getElementById("draftStaffTypeControl");
 const genderSwapButton = document.getElementById("genderSwapButton");
 const nationalityButton = document.getElementById("nationalityButton");
 const nationalityMenu = document.getElementById("nationalityMenu");
+const nameFilter = document.getElementById("nameFilter");
 const plusBtn = document.querySelector('.age-holder .bi-plus');
 const minusBtn = document.querySelector('.age-holder .bi-dash');
 const ageSpan = document.querySelector('.age-holder .actual-age');
@@ -149,6 +151,7 @@ export function place_drivers_editStats(driversArray) {
         let nameDiv = document.createElement("div");
         nameDiv.className = "name-div-edit-stats"
         newDiv.dataset.teamid = driver[2];
+        newDiv.dataset.positionInTeam = driver[3];
         newDiv.dataset.type = 0;
         let name = driver[0].split(" ")
         let spanName = document.createElement("span")
@@ -255,6 +258,7 @@ export function initStatsDrivers() {
         const last = el.children[0]?.children[1]?.textContent || "";
         return { el, name: (first + last).toLowerCase() };
     });
+    applyStatsFilters();
 }
 
 
@@ -551,18 +555,72 @@ attachHold(minusBtn, ageSpan, -1, { min: 0, max: 100 });
 attachHold(plusR, inputR, +1, { min: 30, max: 80 });
 attachHold(minusR, inputR, -1, { min: 30, max: 80 });
 
-document.querySelector("#nameFilter").addEventListener("input", function (event) {
-    const val = event.target.value;
-    clearIcon2.classList.toggle("d-none", val === "");
+const statsCategoryFilters = {
+    freefilter: function (elem) {
+        return Number(elem.dataset.raceFormula) === 4;
+    },
+    F1filter: function (elem) {
+        return Number(elem.dataset.raceFormula) === 1;
+    },
+    F1mainfilter: function (elem) {
+        const teamID = Number(elem.dataset.teamid);
+        const positionInTeam = Number(elem.dataset.positionInTeam);
+        const isF1Team = (teamID >= 1 && teamID <= 10) || teamID === 32;
 
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-        const q = val.trim().toLowerCase();
-        console.log("Filtering with query:", q);
-        if (!q) { for (const { el } of editStatsItems) el.classList.remove("d-none"); return; }
-        for (const { el, name } of editStatsItems) el.classList.toggle("d-none", !name.includes(q));
-    }, 150);
-})
+        return Number(elem.dataset.type) === 0
+            && Number(elem.dataset.raceFormula) === 1
+            && isF1Team
+            && (positionInTeam === 1 || positionInTeam === 2);
+    },
+    F2filter: function (elem) {
+        return Number(elem.dataset.raceFormula) === 2;
+    },
+    F3filter: function (elem) {
+        return Number(elem.dataset.raceFormula) === 3;
+    }
+};
+
+function applyStatsFilters() {
+    const q = (nameFilter?.value || "").trim().toLowerCase();
+    const categoryFilter = statsCategoryFilters[activeStatsCategoryFilter];
+
+    for (const { el, name } of editStatsItems) {
+        const matchesSearch = !q || name.includes(q);
+        const matchesCategory = !categoryFilter || categoryFilter(el);
+
+        el.classList.toggle("d-none", !(matchesSearch && matchesCategory));
+    }
+}
+
+function clearActiveStatsCategoryFilter() {
+    activeStatsCategoryFilter = null;
+    document.getElementById("edit_stats").querySelectorAll('.new-pills-filters').forEach(function (elem) {
+        elem.classList.remove("active");
+    });
+}
+
+function setDriverOnlyStatsFiltersVisible(isVisible) {
+    document.getElementById("edit_stats").querySelectorAll(".driver-only-filter").forEach(function (elem) {
+        elem.classList.toggle("d-none", !isVisible);
+    });
+
+    if (!isVisible && activeStatsCategoryFilter === "F1mainfilter") {
+        clearActiveStatsCategoryFilter();
+        applyStatsFilters();
+    }
+}
+
+if (nameFilter) {
+    nameFilter.addEventListener("input", function (event) {
+        const val = event.target.value;
+        clearIcon2.classList.toggle("d-none", val === "");
+
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            applyStatsFilters();
+        }, 150);
+    })
+}
 
 document.querySelectorAll(".text-filter-container .bi-x").forEach(function (elem) {
     elem.addEventListener("click", function () {
@@ -590,96 +648,18 @@ document.querySelector("#filterIcon").addEventListener("click", function () {
 
 document.getElementById("edit_stats").querySelectorAll(".new-pills-filters").forEach(function (elem) {
     elem.addEventListener("click", function (event) {
-        let isActive = elem.classList.contains('active');
+        event.preventDefault();
+        const isActive = elem.classList.contains("active");
 
-        document.getElementById("edit_stats").querySelectorAll('.new-pills-filters').forEach(function (el) {
-            el.classList.remove('active');
-        });
+        clearActiveStatsCategoryFilter();
 
         if (!isActive) {
-            elem.classList.add('active');
+            elem.classList.add("active");
+            activeStatsCategoryFilter = elem.id;
         }
+
+        applyStatsFilters();
     })
-})
-
-document.querySelector("#F1filter").addEventListener("click", function (event) {
-    if (!event.target.classList.contains("active")) {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            elem.classList.remove("d-none")
-        })
-    }
-    else {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            if (parseInt(elem.dataset.raceFormula) === 1) {
-                elem.classList.remove("d-none")
-            }
-            else {
-                elem.classList.add("d-none")
-            }
-        })
-    }
-})
-
-document.querySelector("#F2filter").addEventListener("click", function (event) {
-    if (!event.target.classList.contains("active")) {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            elem.classList.remove("d-none")
-        })
-    }
-    else {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            if (parseInt(elem.dataset.raceFormula) === 2) {
-                elem.classList.remove("d-none")
-            }
-            else {
-                elem.classList.add("d-none")
-            }
-        })
-    }
-})
-
-document.querySelector("#F3filter").addEventListener("click", function (event) {
-    if (!event.target.classList.contains("active")) {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            elem.classList.remove("d-none")
-        })
-    }
-    else {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            if (parseInt(elem.dataset.raceFormula) === 3) {
-                elem.classList.remove("d-none")
-            }
-            else {
-                elem.classList.add("d-none")
-            }
-        })
-    }
-})
-
-document.querySelector("#freefilter").addEventListener("click", function (event) {
-    if (!event.target.classList.contains("active")) {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            elem.classList.remove("d-none")
-        })
-    }
-    else {
-        let elements = document.querySelectorAll('.normal-driver:not([data-is-draft="1"])')
-        elements.forEach(function (elem) {
-            if (parseInt(elem.dataset.raceFormula) === 4) {
-                elem.classList.remove("d-none")
-            }
-            else {
-                elem.classList.add("d-none")
-            }
-        })
-    }
 })
 
 document.querySelector(".order-space").querySelectorAll("i").forEach(function (elem) {
@@ -722,7 +702,9 @@ export function listenersStaffGroups() {
             const staffButton = document.getElementById('staffDropdown');
             let staffSelected = item.innerHTML
             let staffCode = item.dataset.spacestats
-            if (staffCode === "driverStats") {
+            const isDriverGroup = staffCode === "driverStats";
+
+            if (isDriverGroup) {
                 typeOverall = "driver"
                 typeEdit = "0"
                 document.getElementById("driverSpecialAttributes").classList.remove("d-none")
@@ -757,6 +739,7 @@ export function listenersStaffGroups() {
 
             }
 
+            setDriverOnlyStatsFiltersVisible(isDriverGroup);
             staffButton.querySelector(".dropdown-label").innerHTML = staffSelected;
             setAddStaffType(typeEdit);
             setAttributesTitle(typeEdit);
@@ -785,22 +768,14 @@ function setAddStaffType(typeStaff) {
 }
 
 function resetStatsFilters() {
-    const nameFilter = document.querySelector("#nameFilter");
     if (nameFilter && nameFilter.value !== "") {
         nameFilter.value = "";
-        nameFilter.dispatchEvent(new Event("input", {
-            bubbles: true,
-            cancelable: true
-        }));
+        clearIcon2.classList.add("d-none");
     }
 
-    document.getElementById("edit_stats").querySelectorAll(".new-pills-filters").forEach(function (elem) {
-        elem.classList.remove("active");
-    });
+    clearActiveStatsCategoryFilter();
 
-    document.querySelectorAll('.normal-driver:not([data-is-draft="1"])').forEach(function (elem) {
-        elem.classList.remove("d-none");
-    });
+    applyStatsFilters();
 }
 
 function applyStaffTypeSelection(typeStaff) {

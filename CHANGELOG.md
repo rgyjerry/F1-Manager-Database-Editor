@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.8 - 2026-04-17
+
+### Added
+
+- Added an Attributes page driver filter that shows only F1 main drivers in team seats 1 and 2.
+
 ## 3.5.10-local.7 - 2026-04-17
 
 ### Fixed
