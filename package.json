@@ -2,7 +2,7 @@
   "name": "f1-manager-database-editor",
   "productName": "F1 Manager Database Editor",
   "version": "3.5.10",
-  "description": "A standalone local Mac app for editing F1 Manager save files",
+  "description": "Standalone macOS app for editing F1 Manager save files locally",
   "main": "electron/main.js",
   "scripts": {
     "build": "webpack",
