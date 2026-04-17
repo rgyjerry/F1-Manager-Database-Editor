@@ -2,7 +2,7 @@ import { races_names, part_codes_abreviations, codes_dict, combined_dict, races_
     theme_colors
   } from "./config";
 import { colors_dict, get_colors_dict } from "./head2head";
-import { manageSaveButton, game_version, attachHold, first_show_animation, selectedTheme, confirmModal, new_update_notifications } from "./renderer";
+import { manageSaveButton, game_version, attachHold, first_show_animation, selectedTheme, confirmModal, new_update_notifications, showNumberPrompt } from "./renderer";
 import { Command } from "../backend/command.js";
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -456,13 +456,21 @@ function setupTeamOverallButtons() {
         button.title = "Set overall performance";
         button.innerHTML = `<i class="bi bi-magic"></i><span>Set</span>`;
 
-        button.addEventListener("click", function (event) {
+        button.addEventListener("click", async function (event) {
             event.preventDefault();
             event.stopPropagation();
 
             const teamName = teamElem.dataset.teamname || "team";
             const currentOverall = teamElem.querySelector(".performance-bar-progress")?.dataset?.overall || "85";
-            const answer = window.prompt(`Set overall performance for ${teamName}`, String(Number(currentOverall).toFixed(2)));
+            const currentOverallValue = Number(currentOverall);
+            const answer = await showNumberPrompt({
+                title: "Set overall performance",
+                label: teamName,
+                defaultValue: Number.isFinite(currentOverallValue) ? currentOverallValue.toFixed(2) : "85",
+                min: 0,
+                max: 100,
+                step: 0.01
+            });
             if (answer === null) return;
 
             const overall = Number.parseFloat(String(answer).trim());

@@ -1,5 +1,5 @@
 import { staff_pics, team_dict, combined_dict, staff_positions, typeStaff_dict, f1_teams, f2_teams, f3_teams, inverted_dict, getUpdatedName, logos_disc } from "./config";
-import { attachHold, game_version, make_name_prettier, new_update_notifications } from "./renderer";
+import { attachHold, game_version, make_name_prettier, new_update_notifications, showNumberPrompt } from "./renderer";
 import bootstrap from "bootstrap/dist/js/bootstrap.bundle.min.js";
 import interact from 'interactjs';
 import { Command } from "../backend/command.js";
@@ -324,11 +324,18 @@ document.querySelectorAll("#stafftransfersMenu a").forEach(function (elem) {
 })
 
 if (bulkContractYearButton) {
-    bulkContractYearButton.addEventListener("click", function () {
+    bulkContractYearButton.addEventListener("click", async function () {
         const mode = document.querySelector("#staffTransfersDropdown")?.dataset?.value === "staff" ? "staff" : "drivers";
         const label = mode === "staff" ? "staff" : "drivers and reserve drivers";
         const fallbackYear = Number(currentSeason) ? Number(currentSeason) + 1 : new Date().getFullYear() + 1;
-        const answer = window.prompt(`Set valid until year for current-grid ${label}`, String(fallbackYear));
+        const answer = await showNumberPrompt({
+            title: "Set valid until year",
+            label: `Current-grid ${label}`,
+            defaultValue: String(fallbackYear),
+            min: 2023,
+            max: 9999,
+            step: 1
+        });
         if (answer === null) return;
 
         const year = Number.parseInt(String(answer).trim(), 10);

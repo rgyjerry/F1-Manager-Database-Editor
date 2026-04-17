@@ -644,6 +644,117 @@ function showNextNotification(type) {
 
 }
 
+let numberPromptModal = null;
+let numberPromptElements = null;
+let activeNumberPrompt = null;
+
+function resolveNumberPrompt(value) {
+    if (!activeNumberPrompt) return;
+
+    const resolve = activeNumberPrompt.resolve;
+    activeNumberPrompt = null;
+    resolve(value);
+}
+
+function initNumberPromptModal() {
+    if (numberPromptElements) return numberPromptElements;
+
+    const modalElement = document.getElementById("numberPromptModal");
+    const title = document.getElementById("numberPromptTitle");
+    const label = document.getElementById("numberPromptLabel");
+    const input = document.getElementById("numberPromptInput");
+    const cancelButton = document.getElementById("numberPromptCancelButton");
+    const confirmButton = document.getElementById("numberPromptConfirmButton");
+
+    if (!modalElement || !title || !label || !input || !cancelButton || !confirmButton) {
+        return null;
+    }
+
+    numberPromptModal = bootstrap.Modal.getOrCreateInstance
+        ? bootstrap.Modal.getOrCreateInstance(modalElement)
+        : new bootstrap.Modal(modalElement);
+
+    confirmButton.addEventListener("click", function () {
+        const value = input.value;
+        resolveNumberPrompt(value);
+        numberPromptModal.hide();
+    });
+
+    cancelButton.addEventListener("click", function () {
+        resolveNumberPrompt(null);
+        numberPromptModal.hide();
+    });
+
+    input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            const value = input.value;
+            resolveNumberPrompt(value);
+            numberPromptModal.hide();
+        }
+        else if (event.key === "Escape") {
+            event.preventDefault();
+            resolveNumberPrompt(null);
+            numberPromptModal.hide();
+        }
+    });
+
+    modalElement.addEventListener("hidden.bs.modal", function () {
+        resolveNumberPrompt(null);
+    });
+
+    modalElement.addEventListener("shown.bs.modal", function () {
+        input.focus();
+        input.select();
+    });
+
+    numberPromptElements = { modalElement, title, label, input };
+    return numberPromptElements;
+}
+
+export function showNumberPrompt({ title, label, defaultValue = "", min, max, step = "1", placeholder = "" } = {}) {
+    const elements = initNumberPromptModal();
+    if (!elements || !numberPromptModal) {
+        new_update_notifications("Editor prompt is unavailable.", "error");
+        return Promise.resolve(null);
+    }
+
+    if (activeNumberPrompt) {
+        resolveNumberPrompt(null);
+    }
+
+    elements.title.textContent = title || "Edit value";
+    elements.label.textContent = label || "Value";
+    elements.input.value = defaultValue;
+    elements.input.placeholder = placeholder;
+
+    if (min === undefined || min === null) {
+        elements.input.removeAttribute("min");
+    }
+    else {
+        elements.input.setAttribute("min", String(min));
+    }
+
+    if (max === undefined || max === null) {
+        elements.input.removeAttribute("max");
+    }
+    else {
+        elements.input.setAttribute("max", String(max));
+    }
+
+    if (step === undefined || step === null) {
+        elements.input.removeAttribute("step");
+    }
+    else {
+        elements.input.setAttribute("step", String(step));
+    }
+
+    return new Promise((resolve) => {
+        activeNumberPrompt = { resolve };
+        numberPromptModal.show();
+    });
+}
+
 export function make_name_prettier(text) {
     const words = text.trim().split(/\s+/);
 

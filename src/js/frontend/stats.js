@@ -1,7 +1,7 @@
 import { inverted_countries_abreviations } from "../backend/scriptUtils/countries";
 import { team_dict, mentalityModifiers, teamOrder, mentality_dict, combined_dict, logos_disc } from "./config";
 import { colors_dict } from "./head2head";
-import { attachHold, new_update_notifications } from "./renderer";
+import { attachHold, new_update_notifications, showNumberPrompt } from "./renderer";
 import { insert_space, manageColor, format_name } from "./transfers";
 import { Command } from "../backend/command.js";
 import Chart from 'chart.js/auto';
@@ -1652,7 +1652,7 @@ function toggleComparisonMode() {
 }
 
 if (setMainAttributesButton) {
-    setMainAttributesButton.addEventListener("click", function () {
+    setMainAttributesButton.addEventListener("click", async function () {
         if (isComparisonModeActive) toggleComparisonMode();
 
         const selected = document.querySelector(".normal-driver.clicked");
@@ -1662,7 +1662,14 @@ if (setMainAttributesButton) {
         }
 
         const defaultValue = document.getElementById("ovrholder")?.textContent || "85";
-        const answer = window.prompt(`Set all main attributes for ${selected.dataset.name}`, defaultValue);
+        const answer = await showNumberPrompt({
+            title: "Set main attributes",
+            label: selected.dataset.name || "Selected staff member",
+            defaultValue,
+            min: 0,
+            max: 100,
+            step: 1
+        });
         if (answer === null) return;
 
         const value = Number.parseInt(String(answer).trim(), 10);
