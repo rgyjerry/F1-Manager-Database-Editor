@@ -2,7 +2,7 @@
   "name": "f1-manager-database-editor",
   "productName": "F1 Manager Database Editor",
   "version": "3.5.10",
-  "description": "A tool that will let you edit your save file from F1 Manager games",
+  "description": "A standalone local Mac app for editing F1 Manager save files",
   "main": "electron/main.js",
   "scripts": {
     "build": "webpack",
@@ -11,8 +11,18 @@
     "package:mac": "npm run build:desktop && electron-builder --mac dir --publish=never",
     "optimize:logos": "node scripts/optimize-team-logos.js"
   },
-  "repository": "https://github.com/IUrreta/DatabaseEditor",
-  "author": "IUrreta",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rgyjerry/F1-Manager-Database-Editor.git"
+  },
+  "homepage": "https://github.com/rgyjerry/F1-Manager-Database-Editor#readme",
+  "bugs": {
+    "url": "https://github.com/rgyjerry/F1-Manager-Database-Editor/issues"
+  },
+  "author": "rgyjerry",
+  "contributors": [
+    "IUrreta <https://github.com/IUrreta>"
+  ],
   "license": "LGPL-3.0-or-later",
   "dependencies": {
     "@upstash/redis": "^1.35.7",

@@ -1,5 +1,23 @@
 <img width="1875" height="625" alt="Copia de DATABASE EDITOR F1 MANAGER 23" src="https://github.com/user-attachments/assets/7cb4d0ae-f6a5-4d79-9ab5-139e5f5513e2" />
 
+# F1 Manager Database Editor - Local Mac App
+
+This standalone repository packages the F1 Manager Database Editor as a local macOS app. It is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), and the original author deserves credit for the editor UI, save parsing/editing logic, and core feature set.
+
+This repository is no longer maintained as a GitHub fork. Upstream changes from `IUrreta/DatabaseEditor` are not automatically merged here.
+
+## Local Mac App
+
+```bash
+npm install
+npm run package:mac
+open "release/mac-arm64/F1 Manager Database Editor.app"
+```
+
+The generated `.app` is intended for personal local use and is not notarized. The local app keeps the core save editing workflow, native file open/save dialogs, local recents, and bundled `sql.js` WASM. Hosted Patreon login, hosted rate limits, and OpenAI article generation are disabled in desktop mode.
+
+See [CHANGELOG.md](CHANGELOG.md) for standalone-app changes and [NOTICE.md](NOTICE.md) for attribution details.
+
 <h3>OPEN SOURCE TOOL TO EDIT YOUR SAVE FILES FROM F1 MANAGER 23 & 24</h3>
 <h4>Supports every bit of cuistomization you can imagine, and even more</h4>
 
