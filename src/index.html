@@ -399,9 +399,9 @@
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link bold-font categoryPills generalPills active" data-bs-toggle="pill"
-                  data-section=".engines-section" id="patreonPill">
-                  <div class="basic-label bold-font">Patreon</div>
+                <a class="nav-link bold-font categoryPills generalPills d-none" data-bs-toggle="pill"
+                  data-section=".engines-section" id="settingsPill">
+                  <div class="basic-label bold-font">Appearance</div>
                   <div class="pill-line"></div>
                 </a>
               </li>
@@ -888,21 +888,9 @@
 
             </div>
           </div>
-          <div id="patreonChanges">
-            <div class="patreon-changes-text modal-text">
-              <span>
-                Becoming a patreon supporter will not only support massively the development of the editor, but also
-                give
-                you access to
-                exclusive content and features. Please consider supporting the tool if you find it useful!
-              </span>
-              <span>
-                If you are already a patreon supporter, please log in with your account to unlock the exclusive features
-                and remove the pop-ups!
-              </span>
-            </div>
-            <div class="patreon-unlockables  d-none">
-              <div class="patreon-themes">
+          <div id="appearanceChanges" class="d-none">
+            <div class="appearance-options">
+              <div class="theme-options">
                 <span class="modal-subtitle bold-font">Choose a theme</span>
                 <div class="themes-grid">
                   <div class="one-theme active" id="defaultTheme" data-theme="default-theme">
@@ -1072,21 +1060,6 @@
                   </div>
 
                 </div>
-              </div>
-              <div class="api-key-section">
-                <span class="modal-subtitle bold-font">API Limits</span>
-                <div class="modal-text">
-                  The editor uses OpenAI's API for the news' articles generation. This service is not free, so to
-                  prevent super power users from abusing it, there is a daily limit of requests based on your Patreon
-                  tier.
-                </div>
-                <div class="limit-bar-and-text" id="rateLimitContainer">
-                  <div class="limit-bar">
-                    <div class="limit-bar-fill" id="limitBarFill"></div>
-                  </div>
-                  <div class="limit-text" id="limitText">Plenty of requests available</div>
-                </div>
-
               </div>
             </div>
 
@@ -1385,7 +1358,7 @@
               </div>
               <div class="news-options-context" id="newsOptionsContext" aria-hidden="true">
                 <textarea class="news-options-context-textarea" id="newsOptionsContextTextarea"
-                  placeholder="Add extra context for the model..."></textarea>
+                  placeholder="Add extra context for the local article summary..."></textarea>
                 <div class="news-options-context-actions">
                   <button type="button" class="close-modal" id="newsOptionsContextCancel">Cancel</button>
                   <button type="button" class="confirm-modal" id="newsOptionsContextRegenerate">Regenerate</button>
@@ -1497,7 +1470,7 @@
           <h3 class="modal-title bold-font">Add context for this article</h3>
         </div>
         <div class="modal-body custom-body">
-          <textarea class="news-context-textarea" placeholder="Add extra context for the model..."></textarea>
+          <textarea class="news-context-textarea" placeholder="Add extra context for the local article summary..."></textarea>
         </div>
         <div class="modal-footer custom-footer">
           <div class="d-flex">
@@ -1799,27 +1772,6 @@
       </div>
 
     </div>
-    <div class="patreon-login">
-      <div type="button" class="patreon-login-button button-with-icon" id="patreonToolLoginButton">
-        <span>Login with Patreon</span>
-      </div>
-      <div class="user-name-and-logout-tool d-none">
-        <div class="button-with-icon" id="userToolButton">
-          <i class="bi bi-person-fill"></i>
-          <span id="userToolName"></span>
-        </div>
-        <div class="userToolMenu hidden auto-closable">
-          <div class="button-with-icon" id="patreonStatus">
-            <i class="bi-custom-patreon"></i>
-            <span id="patreonStatusText">Patreon Supporter</span>
-          </div>
-          <div class="button-with-icon" id="patreonLogoutButton">
-            <i class="bi bi-box-arrow-right"></i>
-            <span>Logout</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
   <div class="scroll-wrapper">
     <button class="save-button bold-font d-none">
@@ -1875,8 +1827,6 @@
                 target="_blank">&nbsp;@ignaciourreta_</a>
               <a class="bi bi-reddit" href="https://www.reddit.com/user/ignaciourreta"
                 target="_blank">&nbsp;ignaciourreta</a>
-              <a class="bi-custom-patreon" href="https://www.patreon.com/f1dbeditor" target="_blank">&nbsp;Support the
-                project</a>
               <a class="bi bi-discord" href="https://discord.gg/3QXg3hsD8B" target="_blank">&nbsp;Join our Discord</a>
             </div>
           </div>
@@ -6421,56 +6371,6 @@
 
   </div>
   </div>
-  <div class="patreon-slide-up">
-    <div class="slide-up-title-and-x bold-font">
-      <span class="slide-up-title">
-        Support the project
-      </span>
-      <i class="bi bi-x" id="patreonSlideUpClose"></i>
-    </div>
-    <div class="patreon-paragraph">
-      <span class="">
-        The Database Editor will <span class="important-text bold-font ">remain free</span>, and no core features
-        will
-        ever be locked behind a paywall.
-        However, running and maintaining this project <span class="important-text bold-font">takes time and
-          resources</span>.
-      </span>
-      <span class="">
-        If you found the tool useful and want to support its development,
-        <br>
-        <span class="patreon-text bold-font">consider becoming a Patron!</span>
-      </span>
-      <div class="patreon-perks d-none">
-        <div class="perks-list">
-          <span>5.5€/month tier:</span>
-          <ul class="patreon-perks-list">
-            <li>Support the project</li>
-            <li>Extra themes for the editor</li>
-            <li>Ad-free experience (no pop-ups)</li>
-            <li>Access to progress posts</li>
-            <li>Recognition as a supporter</li>
-            <li>Ability to request new features</li>
-          </ul>
-        </div>
-        <div class="perks-list">
-          <span>10.5€/month tier:</span>
-          <ul class="patreon-perks-list">
-            <li>All the previous tiers rewards, plus:</li>
-            <li>Even more support to the project!</li>
-            <li>Saving your data from +5 seasons</li>
-            <li>Sneak peeks of future development</li>
-          </ul>
-        </div>
-      </div>
-      <a href="https://www.patreon.com/f1dbeditor" target="_blank">
-        <div class="patreon-button">
-          <div class="patreon-button-logo"></div>
-          <span class="patreon-button-text bold-font">PATREON PAGE</span>
-        </div>
-      </a>
-    </div>
-  </div>
   <footer class="footer hidden">
     <div class="socials">
       <a class="bi bi-github" href="https://github.com/IUrreta/DatabaseEditor" target="_blank">&nbsp;DB Editor</a>
@@ -6479,8 +6379,6 @@
         profile</a>
       <a class="bi bi-twitter-x" href="https://twitter.com/ignaciourreta_" target="_blank">&nbsp;@ignaciourreta_</a>
       <a class="bi bi-reddit" href="https://www.reddit.com/user/ignaciourreta" target="_blank">&nbsp;ignaciourreta</a>
-      <a class="bi-custom-patreon" href="https://www.patreon.com/f1dbeditor" target="_blank">&nbsp;Support the
-        project</a>
       <a class="bi bi-discord" href="https://discord.gg/3QXg3hsD8B" target="_blank">&nbsp;Join our Discord</a>
     </div>
     <div class="save-info">

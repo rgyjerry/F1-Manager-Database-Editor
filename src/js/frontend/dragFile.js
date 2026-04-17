@@ -1,8 +1,8 @@
 // dragDrop.js
-import { gamePill, editorPill, setSaveName, new_update_notifications, setIsShowingNotification } from "./renderer.js";
+import { gamePill, editorPill, settingsPill, setSaveName, new_update_notifications, setIsShowingNotification } from "./renderer.js";
 import { saveHandleToRecents, getRecentHandles } from "./recentsManager.js";
 import { Command } from "../backend/command.js";
-import { rememberDesktopFile, shouldUseDesktopMode } from "./desktopBridge.js";
+import { rememberDesktopFile } from "./desktopBridge.js";
 
 let carAnalysisUtils = null;
 export const dbWorker = new Worker(new URL('../backend/worker.js', import.meta.url));
@@ -136,9 +136,7 @@ export async function processSaveFile(file) {
             // 6. Finalmente mostramos el editor
             editorPill.classList.remove("d-none");
             gamePill.classList.remove("d-none");
-            if (!shouldUseDesktopMode()) {
-                patreonPill.classList.remove("d-none");
-            }
+            settingsPill?.classList.remove("d-none");
 
             const command = new Command("saveSelected", {});
             command.execute();

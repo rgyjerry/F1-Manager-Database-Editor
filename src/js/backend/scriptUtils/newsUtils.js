@@ -9,7 +9,6 @@ import { getTier, getDriverOverall, fireDriver, hireDriver, swapDrivers } from "
 import { getPerformanceAllTeamsSeason, getAllPartsFromTeam, getPerformanceAllTeams } from "./carAnalysisUtils";
 import { getGlobals } from "../commandGlobals";
 import { unitValueToValue } from "./carConstants";
-import { track } from "@vercel/analytics";
 import LZString from "lz-string";
 import { enrichDriversWithHistory, fetchDriverHistoryRecords } from "./recordUtils";
 const USE_COMPRESSION = false;

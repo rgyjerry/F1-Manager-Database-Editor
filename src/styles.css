@@ -210,22 +210,6 @@ body.og-theme .important-text {
   color: var(--new-primary-dark);
 }
 
-.patreon-changes-text {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.patreon-text {
-  color: var(--support-me);
-}
-
-.patreon-paragraph {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 /* Developer tools (localhost only) */
 .devtools-window {
   position: fixed;
@@ -445,76 +429,6 @@ body.og-theme .important-text {
     width: 100%;
     margin-left: 0;
   }
-}
-
-.patreon-plain-text {
-  color: var(--modal-text)
-}
-
-.patreon-perks {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-
-#patreonKeyGeneral {
-  margin-top: 10px;
-}
-
-.patreon-button {
-  display: flex;
-  flex-direction: row;
-  gap: 5px;
-  align-items: center;
-  transition: background-color 0.15s, color 0.15s;
-  padding: 8px 15px;
-  border-radius: 7px;
-  cursor: pointer;
-  width: max-content;
-  text-decoration: none;
-}
-
-a:has(.patreon-button) {
-  text-decoration: none;
-}
-
-.patreon-button:hover {
-  background-color: var(--text-general);
-}
-
-.patreon-button:hover .patreon-button-text,
-patreon-button:active .patreon-button-text {
-  color: var(--negative-text);
-}
-
-.patreon-button:hover .patreon-button-logo,
-.patreon-button:active .patreon-button-logo {
-  background-color: var(--negative-text);
-}
-
-.patreon-button:active {
-  transform: scale(0.98);
-}
-
-.patreon-button-logo {
-  width: 1em;
-  height: 1em;
-  -webkit-mask: url('/assets/images/patreonLogo.svg') no-repeat center;
-  mask: url('/assets/images/patreonLogo.svg') no-repeat center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  background-color: var(--text-general);
-  transition: all 0.15s;
-}
-
-.patreon-button-text {
-  color: var(--text-general);
-  font-size: 18px;
-  text-transform: uppercase;
-  transition: all 0.15s;
-  text-decoration: none;
 }
 
 .perks-list {
@@ -1807,14 +1721,6 @@ body.og-theme .dropdown-menu a:hover {
   background-color: var(--new-primary-transparent)
 }
 
-#patreonLoginButton i::before {
-  transition: background-color 0.15s;
-}
-
-#patreonLoginButton:hover i::before {
-  background-color: var(--new-primary);
-}
-
 .user-name-and-logout-tool {
   position: relative;
 }
@@ -1853,24 +1759,6 @@ body.og-theme .dropdown-menu a:hover {
   color: var(--new-primary);
   background-color: var(--new-primary-transparent);
   transform: scale(0.97);
-}
-
-.button-with-icon#patreonStatus:hover {
-  color: var(--text-secondary);
-  background-color: transparent;
-  cursor: default;
-}
-
-.button-with-icon#patreonStatus:active {
-  transform: none;
-}
-
-.button-with-icon#patreonStatus i.bi-custom-patreon::before {
-  background-color: var(--text-secondary);
-}
-
-.button-with-icon#patreonStatus:hover i.bi-custom-patreon::before {
-  background-color: var(--text-secondary);
 }
 
 .comparing-tag {
@@ -2204,10 +2092,6 @@ input.comparing-tag {
   font-size: 14px;
   padding: 0 12px;
   white-space: nowrap;
-}
-
-.api-key-section .separator {
-  height: 20px;
 }
 
 .separator-3 {
@@ -2963,31 +2847,6 @@ input.comparing-tag {
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
 }
-
-.patreon-login {
-  padding-right: 15px;
-}
-
-body:has(#blockDiv:not(.disappear)) .patreon-login .patreon-login-button,
-body:has(#blockDiv:not(.disappear)) .patreon-login #userToolButton {
-  color: var(--text-muted);
-}
-
-body:has(#blockDiv:not(.disappear)) .patreon-login .patreon-login-button:hover,
-body:has(#blockDiv:not(.disappear)) .patreon-login #userToolButton:hover {
-  color: var(--new-primary);
-}
-
-
-.patreon-login .patreon-login-button:hover {
-  color: var(--new-primary);
-}
-
-.patreon-login .patreon-login-button:active {
-  transform: scale(0.97);
-  color: var(--new-primary);
-}
-
 
 body.og-theme .tools-panel {
   border-bottom: 1px solid var(--slight-contrast);
@@ -7318,12 +7177,6 @@ body.og-theme .records-list {
 }
 
 
-#patreonModal .custom-modal,
-#patreonModal .modal-dialog {
-  min-width: 800px !important;
-}
-
-
 .drivers-modal-zone,
 .teams-modal-zone {
   border-radius: 10px;
@@ -8173,13 +8026,7 @@ body.og-theme .records-list {
   animation: gradient-move-title 6s infinite linear;
 }
 
-.patreon-links {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-}
-
-.patreon-themes .modal-subtitle {
+.theme-options .modal-subtitle {
   margin-bottom: 3px;
 }
 
@@ -14508,44 +14355,6 @@ body:has(#modpill.active) .creator-separator {
   color: color-mix(in srgb, var(--negative-general) 95%, var(--generals));
 }
 
-body.og-theme footer a.bi-custom-patreon::before {
-  background-color: var(--slight-contrast);
-}
-
-a.bi-custom-patreon::before,
-i.bi-custom-patreon::before {
-  content: "";
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  -webkit-mask: url('/assets/images/patreonLogo.svg') no-repeat center;
-  mask: url('/assets/images/patreonLogo.svg') no-repeat center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  background-color: var(--text-general);
-  transition: background-color 0.15s;
-}
-
-.footer a.bi-custom-patreon::before {
-  background-color: var(--dark-text)
-}
-
-a.bi-custom-patreon:hover::before {
-  background-color: var(--support-me) !important;
-}
-
-a.bi-custom-patreon:hover {
-  color: var(--support-me) !important;
-}
-
-a.bi-custom-patreon.open-slide-up {
-  animation: goUp 0.4s forwards;
-}
-
-a.bi-custom-patreon.close-slide-up {
-  animation: goDown 0.4s forwards;
-}
-
 @keyframes goUp {
   0% {
     transform: translateY(0);
@@ -14574,25 +14383,6 @@ a.bi-custom-patreon.close-slide-up {
   }
 }
 
-.patreon-slide-up {
-  padding: 10px;
-  background-color: var(--elements-hover);
-  box-shadow: 0 0 10px var(--generals);
-  border-radius: 10px;
-  transform: translateY(125%);
-  transition: transform 0.15s;
-  position: fixed;
-  bottom: 42px;
-  left: 10px;
-  color: var(--text-general);
-  z-index: 190;
-  max-width: 600px;
-}
-
-.patreon-slide-up.open {
-  transform: translateY(0);
-}
-
 .slide-up-title-and-x {
   margin-bottom: 10px;
   display: flex;
@@ -14603,18 +14393,7 @@ a.bi-custom-patreon.close-slide-up {
   height: 30px;
 }
 
-#patreonSlideUpClose {
-  font-size: 26px;
-  cursor: pointer;
-  color: var(--modal-text);
-  transition: all 0.15s;
-}
-
-#patreonSlideUpClose:hover {
-  color: var(--negative-general);
-}
-
-.patreon-unlockables {
+.appearance-options {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -14623,70 +14402,15 @@ a.bi-custom-patreon.close-slide-up {
   border-top: 2px solid var(--separator);
 }
 
-#modelSelectorButton {
-  margin-top: 0px !important;
-}
-
-#aiModelmenu .dropdown-item {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-#aiModelmenu .dropdown-item i {
-  font-size: 22px;
-  height: 22px;
-  width: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  transition: transform 0.15s, opacity 0.15s;
-}
-
-.model-and-description {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  pointer-events: none;
-}
-
-.model-and-description .model-name {
-  color: var(--text-general);
-  font-family: "Formula1Bold";
-  pointer-events: none;
-}
-
-.model-and-description .model-description {
-  font-family: "Formula1";
-  color: var(--text-secondary);
-  pointer-events: none;
-  font-size: 14px;
-}
-
-.patreon-themes,
-.ai-model-settings {
+.theme-options {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.patreon-unlockables .modal-subtitle {
+.appearance-options .modal-subtitle {
   font-size: 18px;
   line-height: 1.3;
-}
-
-.api-key-section {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-#patreonChanges>.api-key-section {
-  margin-top: 10px;
-  padding-top: 5px;
-  border-top: 2px solid var(--separator);
 }
 
 #news .modal-text {
@@ -14698,8 +14422,7 @@ a.bi-custom-patreon.close-slide-up {
   text-align: center;
 }
 
-.modal-text a,
-.news-error-api-key a {
+.modal-text a {
   color: var(--new-primary);
   transition: color 0.15s;
 }
@@ -14723,30 +14446,6 @@ a.bi-custom-patreon.close-slide-up {
   color: var(--new-primary);
   background-color: transparent;
   cursor: default;
-}
-
-
-#patreonLogoutButton:hover {
-  color: var(--negative-general);
-  background-color: color-mix(in srgb, var(--elements) 75%, var(--negative-general));
-}
-
-#patreonLogoutButton:hover i,
-#patreonLogoutButton:hover i::before {
-  background-color: transparent;
-}
-
-
-.patreon-status.negative {
-  color: var(--negative-general) !important;
-}
-
-.patreon-status.positive {
-  color: var(--positive-general) !important;
-}
-
-.patreon-status {
-  color: var(--modal-text) !important;
 }
 
 
@@ -15371,18 +15070,6 @@ a.bi-custom-patreon.close-slide-up {
 
 }
 
-
-.patreon-members {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  width: 100%;
-  height: 50px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-}
 
 .marquee {
   white-space: nowrap;
@@ -17508,16 +17195,6 @@ span.news-error {
   color: color-mix(in srgb, var(--elements) 60%, var(--text-general));
 }
 
-p.news-error-api-key {
-  display: inline-block;
-  top: 60%;
-  text-align: center;
-  color: color-mix(in srgb, var(--elements) 60%, var(--text-general));
-  text-wrap: wrap;
-  white-space: normal;
-  hyphens: none;
-}
-
 .loader-div,
 .news-error {
   display: flex;
@@ -17627,8 +17304,7 @@ p.news-error-api-key {
 
 #newsTypeMenu .redesigned-dropdown-item i.unactive,
 #newsLanguageMenu .redesigned-dropdown-item i.unactive,
-#season_viewer .redesigned-dropdown-menu .redesigned-dropdown-item i.unactive,
-#aiModelmenu .dropdown-item i.unactive {
+#season_viewer .redesigned-dropdown-menu .redesigned-dropdown-item i.unactive {
   transform: rotate(-90deg);
   opacity: 0;
 }
@@ -18360,10 +18036,6 @@ p.news-error-api-key {
   color: var(--text-muted);
   text-decoration: none;
   transition: color 0.15s;
-}
-
-.socials-container a.bi-custom-patreon::before {
-  background-color: var(--text-muted);
 }
 
 .icon-circle {

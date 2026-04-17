@@ -1,6 +1,3 @@
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-
 import { resetTeamEditing, fillLevels, longTermObj, originalCostCap, gather_team_data, gather_pit_crew, teamCod } from './teams';
 import {
     resetViewer, generateYearsMenu, resetYearButtons, update_logo, setEngineAllocations, engine_names, new_drivers_table, new_teams_table,
@@ -34,7 +31,7 @@ import { place_news, updateNewsYearsButton } from './news.js';
 import { load_regulations, gather_regulations_data } from './regulations.js';
 import { loadRecordsList, loadTeamRecordsList } from './seasonViewer';
 import { resetStaffIDChanges, updateEditsWithModData } from '../backend/scriptUtils/modUtils.js';
-import { dbWorker, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, processSaveFile } from './dragFile';
+import { dbWorker, processSaveFile } from './dragFile';
 import { Command } from "../backend/command.js";
 import { saveAs } from "file-saver";
 import members from "../../data/members.json"
@@ -60,7 +57,7 @@ const modPill = document.getElementById("modpill")
 
 export const editorPill = document.getElementById("editorPill")
 export const gamePill = document.getElementById("gamePill")
-const patreonPill = document.getElementById("patreonPill")
+export const settingsPill = document.getElementById("settingsPill")
 
 const driverTransferDiv = document.getElementById("driver_transfers");
 const editStatsDiv = document.getElementById("edit_stats");
@@ -75,9 +72,6 @@ const newsDiv = document.getElementById("news")
 
 const patchNotesBody = document.getElementById("patchNotesBody")
 const selectImageButton = document.getElementById('selectImage');
-const patreonLoginButton = document.getElementById('patreonLoginButton');
-const patreonLogoutButton = document.getElementById('patreonLogoutButton');
-const patreonToolLoginButton = document.getElementById('patreonToolLoginButton');
 const userToolButton = document.getElementById('userToolButton');
 const saveFileButton = document.getElementById('saveFileButton');
 
@@ -107,15 +101,11 @@ const dropDownMenu = document.getElementById("dropdownMenu");
 const notificationPanel = document.getElementById("notificationPanel");
 
 const logButton = document.getElementById("logFileButton");
-const patreonLogo = document.querySelector(".footer .bi-custom-patreon");
-const patreonSlideUp = document.querySelector(".patreon-slide-up");
-const slideUpClose = document.getElementById("patreonSlideUpClose")
-const patreonUnlockables = document.querySelector(".patreon-unlockables")       
 const downloadSaveButton = document.querySelector(".download-save-button")      
 const downloadSaveProgress = document.getElementById("downloadSaveProgress");
 const downloadSaveProgressFill = document.getElementById("downloadSaveProgressFill");
 
-const patreonThemes = document.querySelector(".patreon-themes");
+const themeOptions = document.querySelector(".theme-options");
 
 const status = document.querySelector(".status-info")
 const updateInfo = document.querySelector(".update-info")
@@ -170,7 +160,6 @@ let difcultyCustom = "default"
 
 export let game_version = 2023;
 export let custom_team = false;
-export let nightlyBlock = false;
 export let seasonModData = {};
 let latestSaveYear = null;
 let firstShow = false;
@@ -187,7 +176,7 @@ let viewerLoaded = false;
 
 export let selectedTheme = "default-theme";
 let isNightlyHost = false;
-let hasPatreonThemeAccess = false;
+let hasThemeAccess = false;
 
 let newsAvailable = {
     "normal": false,
@@ -202,17 +191,10 @@ const parchModalTitle = document.getElementById("patchModalTitle")
 let notificationsQueue = [];
 let isShowingNotification = false;
 
-const repoOwner = 'IUrreta';
-const repoName = 'DatabaseEditor';
-
 function applyDesktopModeUI() {
     if (!shouldUseDesktopMode()) return;
 
     document.body?.classList.add("desktop-app");
-    document.querySelector(".patreon-login")?.classList.add("d-none");
-    document.querySelector(".api-key-section")?.classList.add("d-none");
-    document.querySelector(".patreon-slide-up")?.classList.add("d-none");
-    document.querySelector("#patreonPill")?.classList.add("d-none");
 }
 
 
@@ -259,82 +241,12 @@ export function setIsShowingNotification(value) {
 
 
 
-/**
- * get the patch notes from the actual version fro the github api
- */
-async function getPatchNotes() {
-    try {
-        if (versionNow.slice(-3) !== "dev" && !versionNow.includes("nightly")) {
-            let response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/releases/tags/${versionNow}`);
-            let data = await response.json();
-            let changes = data.body;
-            let changesHTML = DOMPurify.sanitize(marked(changes));
-            patchNotesBody.innerHTML = changesHTML
-            let h1Elements = patchNotesBody.querySelectorAll("h1");
-
-            h1Elements.forEach(function (h1Element) {
-                let h4Element = document.createElement("h4");
-                h4Element.textContent = h1Element.textContent;
-                h4Element.classList.add("bold-font")
-                patchNotesBody.replaceChild(h4Element, h1Element);
-            });
-
-            let h2Elements = patchNotesBody.querySelectorAll("h2");
-            h2Elements.forEach(function (h1Element) {
-                let h4Element = document.createElement("h4");
-                h4Element.textContent = h1Element.textContent;
-                h4Element.classList.add("bold-font")
-                patchNotesBody.replaceChild(h4Element, h1Element);
-            });
-        }
-        else if (versionNow.includes("nightly")) {
-            let response = await fetch('/data/nightly_patch_notes.md');
-            let changes = await response.text();
-            let changesHTML = DOMPurify.sanitize(marked(changes));
-            patchNotesBody.innerHTML = changesHTML
-            let h1Elements = patchNotesBody.querySelectorAll("h1");
-
-            h1Elements.forEach(function (h1Element) {
-                let h4Element = document.createElement("h4");
-                h4Element.textContent = h1Element.textContent;
-                h4Element.classList.add("bold-font")
-                patchNotesBody.replaceChild(h4Element, h1Element);
-            });
-
-            let h2Elements = patchNotesBody.querySelectorAll("h2");
-            h2Elements.forEach(function (h1Element) {
-                let h4Element = document.createElement("h4");
-                h4Element.textContent = h1Element.textContent;
-                h4Element.classList.add("bold-font")
-                patchNotesBody.replaceChild(h4Element, h1Element);
-            });
-        }
-    } catch {
-        console.log("Couldn't find patch notes")
-    }
-
-
-}
-
-// Patreon OAuth Logic
-if (patreonLoginButton) {
-    patreonLoginButton.addEventListener('click', () => {
-        if (shouldUseDesktopMode()) return;
-        window.location.href = '/api/auth/patreon/login';
-    });
-}
-
-if (patreonToolLoginButton) {
-    patreonToolLoginButton.addEventListener('click', () => {
-        if (shouldUseDesktopMode()) return;
-        window.location.href = '/api/auth/patreon/login';
-    });
-}
-
-if (patreonLogoutButton) {
-    patreonLogoutButton.addEventListener('click', () => {
-        handleLogout();
-    });
+function getPatchNotes() {
+    if (!patchNotesBody) return;
+    patchNotesBody.innerHTML = `
+        <h4 class="bold-font">Local Mac app</h4>
+        <p>This build is maintained as a standalone local editor. Release notes for repository changes are kept in CHANGELOG.md.</p>
+    `;
 }
 
 if (userToolButton) {
@@ -379,189 +291,32 @@ if (saveFileButton && saveFileInput) {
 
 
 
-async function handleLogout() {
-    if (shouldUseDesktopMode()) return;
-
-    try {
-        const response = await fetch('/api/auth/patreon/logout');
-
-        if (response.ok) {
-            console.log("Logout successful");
-
-            updatePatreonUI({ isLoggedIn: false, tier: 'Free', tierNumber: 0, whitelisted: false, paidMember: false });
-
-            window.location.reload();
-        }
-    } catch (error) {
-        console.error("Logout failed", error);
-    }
-}
-
 /**
- * Retrieves the user's Patreon tier from the cookie.
- * @returns {Promise<{paidMember: boolean, tier: string, tierNumber?: number, whitelisted: boolean, isLoggedIn: boolean, user: {fullName: string}}>} An object containing the user's tier information.
+ * Provides local feature access for the standalone app.
+ * @returns {Promise<{paidMember: boolean, tier: string, tierNumber?: number, whitelisted: boolean, isLoggedIn: boolean, user: {fullName: string}}>}
  */
 export async function getUserTier() {
-    if (shouldUseDesktopMode()) {
-        const tier = getDesktopTier();
-        window.__USER_DATA__ = tier;
-        return tier;
-    }
-
-    try {
-        const response = await fetch('/api/me');
-        const data = await response.json();
-
-        // The structure matches what api/me.js returns
-        //set a window variable with the user data to be used in other places of the frontend without needing to call the api again
-        let windowData = {
-            paidMember: data.paidMember,
-            tier: data.tier,
-            tierNumber: data.tierNumber,
-            whitelisted: !!data.whitelisted,
-            isLoggedIn: data.isLoggedIn,
-        };
-        window.__USER_DATA__ = windowData;
-        windowData.user = { fullName: data.user?.fullName || '' };
-        return windowData;
-    } catch (error) {
-        console.error("Failed to check auth status", error);
-        return { paidMember: false, tier: 'Free', whitelisted: false, isLoggedIn: false };
-    }
+    const tier = getDesktopTier();
+    window.__USER_DATA__ = tier;
+    return tier;
 }
 
-async function validateSession() {
-    if (shouldUseDesktopMode()) return true;
-
-    try {
-        const res = await fetch("/api/check-cookie");
-        const data = await res.json();
-
-        // Only force an OAuth refresh when an existing cookie is detected but invalid/legacy.
-        // Not having a cookie simply means "not logged in" and should not redirect.
-        if (data.valid === false && data.hasCookie === true) {
-            console.log("Old Patreon cookie → redirecting to login");
-            window.location.href = "/api/auth/patreon/login";
-            return false;
-        }
-
-        return true;
-
-    } catch (err) {
-        console.error("Error checking Patreon session:", err);
-        return false;
-    }
-}
-
-// Check for OAuth code
-const urlParams = new URLSearchParams(window.location.search);
-const code = urlParams.get('code');
-
-if (code && !shouldUseDesktopMode()) {
-    console.log("There is code")
-    // Clear the code from URL to prevent re-submission on refresh
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    fetch(`/api/auth/patreon/verify?code=${code}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                new_update_notifications(`Welcome ${data.user.fullName}! Tier: ${data.tier}`, "success");
-
-                // Update UI
-                updatePatreonUI(data);
-                maybeReloadForNightlyAccess(data);
-            } else {
-                new_update_notifications(`Login failed: ${data.error}`, "error");
-                updatePatreonUI(data);
-            }
-        })
-        .catch(err => {
-            console.error('Patreon verification error:', err);
-            new_update_notifications("Error verifying Patreon status", "error");
-        });
-} else {
-    validateSession().then(() => {
-        getUserTier().then(updatePatreonUI);
-    });
-}
-
-function maybeReloadForNightlyAccess(tierInfo) {
-    const isNightly = window.location.hostname.includes("nightly");
-    if (!isNightly) return;
-
-    const insiderOrFounder = tierInfo?.tier === "Insider" || tierInfo?.tier === "Founder";
-    if (nightlyBlock && tierInfo?.isLoggedIn && insiderOrFounder) {
-        setTimeout(() => window.location.reload(), 50);
-    }
-}
-
-function updatePatreonUI(tier) {
-    hasPatreonThemeAccess = !!tier.paidMember;
+function updateLocalFeatureAccess(tier) {
+    hasThemeAccess = !!tier.paidMember;
     init_colors_dict(selectedTheme)
 
-    console.log("Updating Patreon UI with tier:", tier);
+    console.log("Updating local feature access:", tier);
 
-    if (shouldUseDesktopMode()) {
-        hasPatreonThemeAccess = true;
-        patreonUnlockables?.classList.remove("d-none");
-        patreonThemes?.classList.remove("d-none");
-        document.getElementById("patreonStatusText").textContent = "Local Mac App";
-        document.querySelector(".user-name-and-logout-tool")?.classList.add("d-none");
-        patreonToolLoginButton?.classList.add("d-none");
-        document.querySelector(".api-key-section")?.classList.add("d-none");
-        document.querySelector("#createCustomNews")?.remove();
-        loadTheme();
-        manageNewsStatus(tier);
-        turningPointsFrequencyConfig?.classList.remove("d-none");
-        return;
-    }
-
-    if (tier.paidMember) {
-        patreonUnlockables.classList.remove("d-none");
-        patreonThemes.classList.remove("d-none");
-        document.getElementById("patreonStatusText").textContent = tier.tier
-        loadTheme();
-    }
-    else {
-        patreonUnlockables.classList.add("d-none");
-        patreonThemes.classList.add("d-none");
-        document.getElementById("patreonStatusText").textContent = tier.isLoggedIn ? tier.tier : "Not logged in"
-        selectedTheme = "default-theme";
-        document.querySelector("body").className = "font default-theme";
-        init_colors_dict(selectedTheme);
-        updateToolbarThemeLogo();
-        syncNightlyIndicator();
-    }
+    hasThemeAccess = true;
+    themeOptions?.classList.remove("d-none");
+    document.querySelector(".user-name-and-logout-tool")?.classList.add("d-none");
+    loadTheme();
     syncNightlyThemeVisibility();
-
-    const hasCreateNewsAccess = !shouldUseDesktopMode() && (tier?.tierNumber === 3 || tier?.tier === "Founder" || !!tier?.whitelisted);
-    if (!hasCreateNewsAccess){
-        //remove the button from the DOM entirely
-        document.querySelector("#createCustomNews")?.remove();
-    }
-
-    if (tier.isLoggedIn) {
-        document.querySelector(".user-name-and-logout-tool").classList.remove("d-none");
-        document.getElementById("userToolName").textContent = tier.user.fullName;
-        patreonToolLoginButton.classList.add("d-none");
-    }
-    else {
-        document.querySelector(".user-name-and-logout-tool").classList.add("d-none");
-        patreonToolLoginButton.classList.remove("d-none");
-    }
-
     manageNewsStatus(tier);
-
-    if (turningPointsFrequencyConfig) {
-        const insiderOrFounder = tier?.tier === "Insider" || tier?.tier === "Founder";
-        if (tier?.isLoggedIn && insiderOrFounder) {
-            turningPointsFrequencyConfig.classList.remove("d-none");
-        } else {
-            turningPointsFrequencyConfig.classList.add("d-none");
-        }
-    }
+    turningPointsFrequencyConfig?.classList.remove("d-none");
 }
+
+getUserTier().then(updateLocalFeatureAccess);
 
 
 
@@ -871,9 +626,6 @@ export async function updateFront(data) {
     }
     if (data.noti_msg !== undefined) {
         new_update_notifications(data.noti_msg, "success");
-    }
-    if (data.isEditCommand !== undefined) {
-        checkOpenSlideUp()
     }
     if (data.unlocksDownload !== undefined) {
         downloadSaveButton.classList.remove("hidden")
@@ -1297,8 +1049,8 @@ if (glowSpot && blockDiv) {
 }
 
 export async function generateNews() {
-    const patreonTier = await getUserTier();
-    checkGenerableNews(patreonTier);
+    const localTier = await getUserTier();
+    checkGenerableNews(localTier);
 
     // lanzar sin payload, el worker lee de DB
     new Command("generateNews", {}).execute();
@@ -2188,17 +1940,17 @@ document.querySelector(".toolbar-logo-and-title").addEventListener("click", func
 gamePill.addEventListener("click", function () {
     document.querySelector("#editorChanges").classList.add("d-none")
     document.querySelector("#gameChanges").classList.remove("d-none")
-    document.querySelector("#patreonChanges").classList.add("d-none")
+    document.querySelector("#appearanceChanges").classList.add("d-none")
 })
 
 editorPill.addEventListener("click", function () {
     document.querySelector("#editorChanges").classList.remove("d-none")
     document.querySelector("#gameChanges").classList.add("d-none")
-    document.querySelector("#patreonChanges").classList.add("d-none")
+    document.querySelector("#appearanceChanges").classList.add("d-none")
 })
 
-patreonPill.addEventListener("click", function () {
-    document.querySelector("#patreonChanges").classList.remove("d-none")
+settingsPill?.addEventListener("click", function () {
+    document.querySelector("#appearanceChanges").classList.remove("d-none")
     document.querySelector("#editorChanges").classList.add("d-none")
     document.querySelector("#gameChanges").classList.add("d-none")
 })
@@ -2413,8 +2165,8 @@ document.querySelector("#cancelDetailsButton").addEventListener("click", functio
 
 
 
-function manageNewsStatus(patreonTier) {
-    const generateNews = checkGenerableNews(patreonTier);
+function manageNewsStatus(localTier) {
+    const generateNews = checkGenerableNews(localTier);
     if (generateNews === "yes") {
         const newsgenerationEnded = document.querySelector('.news-generation-ended');
         if (newsgenerationEnded) {
@@ -2428,64 +2180,18 @@ function manageNewsStatus(patreonTier) {
 
 }
 
-function checkGenerableNews(patreonTier) {
+function checkGenerableNews(localTier) {
     let canGenerate = "no";
     newsAvailable.normal = false;
     newsAvailable.turning = false;
-    if (patreonTier.paidMember) {
+    if (localTier.paidMember) {
         canGenerate = "yes";
-        if (patreonTier.tier === "Insider" || patreonTier.tier === "Founder") {
-            newsAvailable.normal = true;
-            newsAvailable.turning = true;
-        }
-        else if (patreonTier.tier === "Backer") {
-            newsAvailable.normal = true;
-            newsAvailable.turning = false;
-        }
+        newsAvailable.normal = true;
+        newsAvailable.turning = true;
     }
     return canGenerate;
 }
 
-
-async function checkOpenSlideUp() {
-    if (shouldUseDesktopMode()) return;
-
-    const tier = await getUserTier();
-    if (tier.paidMember) return;
-
-    const lastShownStr = localStorage.getItem('patreonModalLastShown');
-    if (!canShowPatreonModal(lastShownStr)) {
-        return;
-    }
-
-    const delaySec = 5;
-    setTimeout(() => {
-        showPatreonModal();
-        localStorage.setItem('patreonModalLastShown', new Date().toISOString());
-    }, delaySec * 1000);
-}
-
-
-function showPatreonModal() {
-    patreonLogo.classList.add("open-slide-up")
-    setTimeout(() => {
-        patreonSlideUp.classList.add("open")
-    }, 350);
-}
-
-slideUpClose.addEventListener('click', () => {
-    patreonSlideUp.classList.remove("open");
-    patreonLogo.className = "bi-custom-patreon close-slide-up"
-});
-
-
-function canShowPatreonModal(lastShown) {
-    if (!lastShown) return true; // Nunca se mostró, podemos mostrarlo
-    const last = new Date(lastShown).getTime();
-    const now = Date.now();
-    const diffDays = (now - last) / (1000 * 60 * 60 * 24);
-    return diffDays >= 1;
-}
 
 init_colors_dict()
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2501,35 +2207,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isNightly) {
         const favicon = document.querySelector('link[rel="icon"]'); //testing
         if (favicon) favicon.href = "../assets/images/logoNightly.png";
-
-        const tierInfo = await getUserTier();
-        let restrictionMessage = null;
-        const insiderOrFounder = tierInfo.tier === "Insider" || tierInfo.tier === "Founder";
-
-        if (tierInfo.isLoggedIn && !insiderOrFounder) {
-            restrictionMessage = "Please upgrade to the Insider or Founder tier on Patreon to access the nightly version.";
-        } else if (!tierInfo.isLoggedIn) {
-            restrictionMessage = "Please log in with your Patreon account to access the nightly version.";
-        }
-
-        if (restrictionMessage !== null) {
-            nightlyBlock = true;
-            const dropDiv = document.querySelector(".drop-div");
-            dropDiv.removeEventListener("dragover", handleDragOver);
-            dropDiv.removeEventListener("dragenter", handleDragEnter);
-            dropDiv.removeEventListener("dragleave", handleDragLeave);
-            dropDiv.removeEventListener("drop", handleDrop);
-            document.getElementById("statusIcon").className = "bi bi-lock";
-            document.getElementById("statusTitle").textContent = "Nightly version is only available for patrons.";
-            document.getElementById("statusDesc").textContent = restrictionMessage;
-
-            const recentsContainer = document.querySelector(".recents-container");
-            if (recentsContainer) recentsContainer.remove();
-
-            document.querySelectorAll(".script-view").forEach(div => {
-                div.remove();
-            });
-        }
 
         const now = new Date();
         const day = String(now.getDate()).padStart(2, '0');
@@ -2547,10 +2224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateToolbarThemeLogo();
     syncNightlyThemeVisibility();
-
-    if (!shouldUseDesktopMode()) {
-        updateRateLimitsDisplay();
-    }
 
     const storedVersion = localStorage.getItem('lastVersion'); // Última versión guardada
     versionPanel.textContent = `${versionNow}`;
@@ -2573,11 +2246,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         "Customize your calendar however you want it",
         "Edit the attributes of each driver just how you want them",
         "Create your own custom engines",
-        "Get stories from your save using AI",
+        "Review stories from your save locally",
         "Compare drivers and teams with detailed graphs",
         "Modify car performance to your liking",
         "Fix game-breaking issues with ease",
-        "No installation required, works in your browser",
+        "Runs locally on your Mac",
         "Honda, for the love of god, give Alonso a good engine for once",
         "In memory of Aloy"
     ];
@@ -2629,58 +2302,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     animatedText.innerHTML = '';
     animateTextLoop();
 });
-
-export async function updateRateLimitsDisplay() {
-  if (shouldUseDesktopMode()) return;
-
-  try {
-    const res = await fetch("/api/usage-today");
-    if (!res.ok) return;
-
-    const { used, limit, percentage } = await res.json();
-
-    const fill = document.getElementById("limitBarFill");
-    const text = document.getElementById("limitText");
-    const container = document.getElementById("rateLimitContainer");
-
-    //100% corresponds to not using any
-    fill.style.width = `${100 - percentage}%`;
-
-    // limpiar estados previos
-    container.classList.remove(
-      "rate-ok",
-      "rate-warning",
-      "rate-danger",
-      "rate-blocked"
-    );
-
-    let message = "";
-    let state = "";
-
-    if (percentage === 0) {
-        state = "rate-ok";
-        message = "All requests available";
-    } else if (percentage < 50) {
-        state = "rate-ok";
-        message = "Plenty of requests available";
-    } else if (percentage < 80) {
-        state = "rate-warning";
-        message = "You're halfway through today's limit";
-    } else if (percentage < 100) {
-        state = "rate-danger";
-        message = "Only a few requests left today";
-    } else {
-        state = "rate-blocked";
-        message = "Daily limit reached";
-    }
-
-    container.classList.add(state);
-    text.textContent = message;
-
-  } catch (err) {
-    console.error("Failed to update rate limits display:", err);
-  }
-}
 
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -2812,7 +2433,7 @@ function updateToolbarThemeLogo() {
         if (meta?.className) logoImg.classList.remove(meta.className);
     });
 
-    if (!hasPatreonThemeAccess) {
+    if (!hasThemeAccess) {
         logoImg.src = "../assets/images/logoVector.svg";
         return;
     }
@@ -2854,7 +2475,7 @@ function syncNightlyThemeVisibility() {
     const nightlyCard = document.querySelector('.one-theme[data-theme="nightly-theme"]');
     if (!nightlyCard) return;
 
-    const showNightlyTheme = isNightlyHost && hasPatreonThemeAccess;
+    const showNightlyTheme = isNightlyHost && hasThemeAccess;
     nightlyCard.classList.toggle("d-none", !showNightlyTheme);
 
     if (!showNightlyTheme && selectedTheme === "nightly-theme") {
@@ -2869,7 +2490,7 @@ function syncNightlyThemeVisibility() {
 
 document.querySelectorAll(".one-theme").forEach(function (elem) {
     elem.addEventListener("click", function () {
-        if (!hasPatreonThemeAccess) return;
+        if (!hasThemeAccess) return;
         if (elem.dataset.theme === "nightly-theme" && !isNightlyHost) return;
         selectedTheme = elem.dataset.theme
         document.querySelector(".one-theme.active").classList.remove("active")
@@ -2893,7 +2514,7 @@ function loadTheme() {
     let theme = localStorage.getItem("theme")
     const savedThemeButton = theme ? document.querySelector(`.one-theme[data-theme="${theme}"]`) : null;
 
-    if (!theme && isNightlyHost && hasPatreonThemeAccess) {
+    if (!theme && isNightlyHost && hasThemeAccess) {
         theme = "nightly-theme"
     }
 

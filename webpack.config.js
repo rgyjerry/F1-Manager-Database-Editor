@@ -43,14 +43,8 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       APP_VERSION: JSON.stringify(packageJson.version),
-        BUILD_ID: JSON.stringify(
-          process.env.BUILD_ID ||
-          process.env.VERCEL_DEPLOYMENT_ID ||
-          'local'
-        ),
+      BUILD_ID: JSON.stringify(process.env.BUILD_ID || 'local'),
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-      'process.env.PATREON_CLIENT_ID': JSON.stringify(process.env.PATREON_CLIENT_ID),
-      'process.env.PATREON_REDIRECT_URI': JSON.stringify(process.env.PATREON_REDIRECT_URI),
       LOCAL_DESKTOP_APP: JSON.stringify(process.env.LOCAL_DESKTOP_APP === 'true'),
     })
   ],

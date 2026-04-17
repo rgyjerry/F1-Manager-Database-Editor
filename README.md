@@ -19,17 +19,18 @@ A standalone macOS app for editing F1 Manager save files locally. This repo pack
 - Reopen files from local recents.
 - Load `sql.js` from the bundled app instead of a CDN.
 
-## Hosted Features Disabled In The Mac App
+## Hosted Backend Removed
 
-The original hosted app includes Patreon and OpenAI-backed features that depend on server-side secrets and Vercel API routes. This standalone Mac app does not recreate that hosted backend.
+This standalone repo removes the original hosted backend surface. It does not include Vercel API routes, hosted auth, Redis-backed rate limits, or OpenAI article-generation code.
 
-Disabled in desktop mode:
+Removed from this repo:
 
-- Patreon login/logout.
-- Hosted daily rate-limit checks.
-- OpenAI article generation.
+- Serverless API routes.
+- Hosted login/logout and rate-limit helpers.
+- OpenAI article-generation calls.
+- Web deployment configuration.
 
-The normal web build path still exists for development compatibility.
+News articles are reviewed locally from save data already available in the app.
 
 ## Build The Mac App
 
@@ -49,7 +50,7 @@ npm run build:desktop
 npm run start:desktop
 ```
 
-`npm run build` builds the browser bundle. `npm run build:desktop` builds the desktop-mode bundle. `npm run start:desktop` builds and launches the Electron app.
+`npm run build` builds the local app bundle. `npm run build:desktop` builds the desktop-mode bundle. `npm run start:desktop` builds and launches the Electron app.
 
 ## Changelog
 

@@ -114,7 +114,7 @@ export async function rememberDesktopFile(fileOrPath) {
 export function getDesktopTier() {
   return {
     paidMember: true,
-    tier: "Founder",
+    tier: "Local",
     tierNumber: 3,
     whitelisted: true,
     isLoggedIn: true,

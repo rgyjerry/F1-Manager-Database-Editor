@@ -8,12 +8,11 @@ import turningPointTitleTemplates from "../../data/news/turning_points_titles_te
 import { currentSeason } from "./transfers";
 import { colors_dict } from "./head2head";
 import { excelToDate } from "../backend/scriptUtils/eidtStatsUtils";
-import { generateNews, getSaveName, confirmModal, updateRateLimitsDisplay, new_update_notifications } from "./renderer";
+import { generateNews, getSaveName, confirmModal, new_update_notifications } from "./renderer";
 import { marked } from 'marked';
 import TurndownService from "turndown";
 import DOMPurify from "dompurify";
 import bootstrap from "bootstrap/dist/js/bootstrap.bundle.min.js";
-import { shouldUseDesktopMode } from "./desktopBridge";
 
 const newsGrid = document.querySelector('.news-grid');
 const newsModalEl = document.getElementById('newsModal');
@@ -54,15 +53,8 @@ function isPaidNewsMember() {
   return window.__USER_DATA__?.paidMember || false;
 }
 
-function canUseGenAiForNews(news) {
-  if (shouldUseDesktopMode()) {
-    return false;
-  }
-
-  if (news?.type === "turning_point_aduo") {
-    return isPaidNewsMember();
-  }
-  return true;
+function canUseGenAiForNews() {
+  return false;
 }
 
 function setAduoLockedHidden(el, hidden) {
@@ -559,14 +551,11 @@ async function generateAndRenderArticle(news, newsList, label = "Generating", fo
     const errorDiv = document.createElement('div');
     errorDiv.classList.add('news-error', 'model-error');
 
-    if (err.status === 429) {
-      errorDiv.innerText = "Daily limit reached. Tomorrow you'll be able to generate more articles.";
-      newsArticle.appendChild(errorDiv);
-    } else if (err.status === 501) {
+    if (err.status === 501) {
       errorDiv.innerText = err.message;
       newsArticle.appendChild(errorDiv);
     } else {
-      errorDiv.innerText = "Error generating article. Please try again.";
+      errorDiv.innerText = "Error building article summary. Please try again.";
       newsArticle.appendChild(errorDiv);
     }
   }
@@ -759,8 +748,8 @@ function manageTurningPointButtons(news, newsList, maxDate, newsBody, readbutton
   if (!newsAvailable.turning && !isAduoTurningPoint) {
     const showInsiderModal = async () => {
       await confirmModal({
-        title: "Insider News Unavailable",
-        body: "Insider news are currently unavailable. To unlock insider news and be able to decide the outcome of turning points, please consider subscribing to the INSIDER tier on our Patreon page.",
+        title: "Turning Point Controls Unavailable",
+        body: "Turning point controls are unavailable for this article.",
         confirmText: "Okay"
       });
     };
@@ -853,27 +842,13 @@ function createNewsItemElement(news, index, newsAvailable, newsList, maxDate, is
     newsTitle.textContent = "Backer-only content";
     imageContainer.appendChild(blockedDiv);
     if (news.turning_point_type === undefined) {
-      infoSpan.innerHTML = "Subscribe to the <span class='bold-font'>BACKER</span> tier to unlock and read all news articles!";
-      newsTitle.textContent = "Backer-only content";
+      infoSpan.textContent = "This article is unavailable in the current save context.";
+      newsTitle.textContent = "Unavailable content";
     }
     else {
-      infoSpan.innerHTML = "Subscribe to the <span class='bold-font'>INSIDER</span> tier to read and <span class='bold-font'>DECIDE</span> the outcome of turning points!";
-      newsTitle.textContent = "Insider-only content";
+      infoSpan.textContent = "This turning point is unavailable in the current save context.";
+      newsTitle.textContent = "Unavailable turning point";
     }
-
-    const patreonButton = document.createElement('a');
-    patreonButton.classList.add('patreon-button');
-    patreonButton.href = "https://www.patreon.com/cw/f1dbeditor/membership";
-    //open in a new window
-    patreonButton.target = "_blank";
-    const patreonIcon = document.createElement('div');
-    patreonIcon.classList.add('patreon-button-logo');
-    const patreonSpan = document.createElement('span');
-    patreonSpan.classList.add('patreon-button-text');
-    patreonSpan.textContent = "Support us on Patreon";
-    patreonButton.appendChild(patreonIcon);
-    patreonButton.appendChild(patreonSpan);
-    blockedDiv.appendChild(patreonButton);
   }
 
 
@@ -898,12 +873,9 @@ function createNewsItemElement(news, index, newsAvailable, newsList, maxDate, is
       (!isTurning && window.__USER_DATA__?.paidMember === true) ||
       (isTurning && (window.__USER_DATA__?.tierNumber >= 2 || isAduoTurningPoint));
 
-    const canOpenArticle = !!news.text || !shouldUseDesktopMode();
+    const canOpenArticle = true;
 
     if (canUserRead && canOpenArticle) {
-      if (!shouldUseDesktopMode() && canUseGenAiForNews(news)) {
-        readActions.appendChild(contextButton);
-      }
       readActions.appendChild(readButton);
       readbuttonContainer.appendChild(readActions);
     }
@@ -1509,7 +1481,7 @@ function buildAduoTemplateArticle(newData) {
   else headerBits.push(`(${quarterString} quarter)`);
 
   if (!engineImprovements.length) {
-    return `${headerBits.join(" ")}\n\nNo manufacturer upgrade data is available for this window.\n\n---\n\n*Patreon members can generate a full AI-written article (with quotes and extra context) for this turning point.*`;
+    return `${headerBits.join(" ")}\n\nNo manufacturer upgrade data is available for this window.`;
   }
 
   const blocks = engineImprovements.map((entry) => {
@@ -1526,7 +1498,33 @@ function buildAduoTemplateArticle(newData) {
     return `**${name}**\n${lines.length ? lines.join("\n") : "- No detailed stat breakdown available."}`;
   }).join("\n\n");
 
-  return `${headerBits.join(" ")}\n\nThis turning point summary lists what each engine manufacturer is expected to improve or worsen in this ADUO window.\n\n${blocks}\n\n---\n\n*Patreon members can generate a full AI-written article (with quotes and extra context) for this turning point.*`;
+  return `${headerBits.join(" ")}\n\nThis turning point summary lists what each engine manufacturer is expected to improve or worsen in this ADUO window.\n\n${blocks}`;
+}
+
+function buildLocalArticleFromContext(newData, context, extraContext = '') {
+  const date = excelToDate(newData.date);
+  const formattedDate = Number.isNaN(date.getTime())
+    ? "Unknown date"
+    : date.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+  const contextText = String(context || "").trim();
+  const extraText = String(extraContext || "").trim();
+  const sections = [
+    `## ${newData.title || "Save news"}`,
+    `**Date:** ${formattedDate}`,
+    "This standalone build keeps news review local and does not call hosted article-generation services.",
+  ];
+
+  if (contextText) {
+    sections.push("### Save context", contextText);
+  } else {
+    sections.push("No detailed save context is available for this article.");
+  }
+
+  if (extraText) {
+    sections.push("### Added context", extraText);
+  }
+
+  return sections.join("\n\n");
 }
 
 async function manageRead(newData, newsList, barProgressDiv, interval, opts = {}) {
@@ -1606,89 +1604,18 @@ async function manageRead(newData, newsList, barProgressDiv, interval, opts = {}
       if (progress >= 98) clearInterval(progressInterval);
     }, 450);
 
-    // 5) Construir prompt SOLO si hace falta
-    let messages = [];
-    const selectedLanguage = getNewsLanguage();
-    const expectsJson = selectedLanguage !== DEFAULT_NEWS_LANGUAGE;
+    let context = "";
     if (handler) {
-      let { instruction, context } = await handler(newData);
-      const normalDate = excelToDate(newData.date);
-      const isoDate = new Date(
-        normalDate.getFullYear(),
-        normalDate.getMonth(),
-        normalDate.getDate()
-      ).toISOString().split("T")[0];
+      const result = await handler(newData);
+      context = result?.context || "";
 
-      // Add turning point events to context
       let date = newData.date;
       context = await addTurningPointContexts(context, date);
-
-      // Add additional contextual info to the prompt template
-      let finalInstruction = `The current date is ${isoDate}\n\n` +
-        `\n\nAdd any quote you find apporpiate from the drivers or team principals if involved in the article. ` +
-        `\n\nThe title of the article is: "${newData.title}"`;
-
-      finalInstruction += `\n\nEvery time a name has (team name) after it, it means their team.\n\nUse **Markdown** formatting in your response for better readability:\n- Use "#" or "##" for main and secondary titles.\n- Always use **bold** driver names and important phrases.\n- ALWAYS use *italics* for quotes or emotional emphasis.\n- Use bullet points or numbered lists if needed. Do not include any raw HTML or code blocks.\nThe final output must be valid Markdown ready to render as HTML.\n`;
-
-      if (expectsJson) {
-        finalInstruction += `\n\nReturn ONLY a JSON object with exactly two keys: "title" and "body".` +
-          ` The "title" must be the translated headline in ${selectedLanguage}.` +
-          ` The "body" must be the full article in ${selectedLanguage} using Markdown.` +
-          ` Do not include the title inside the body. Do not add extra keys or wrap the JSON in code fences.`;
-      }
-
-      finalInstruction = replaceLanguagePlaceholder(finalInstruction, selectedLanguage);
-      instruction = replaceLanguagePlaceholder(instruction, selectedLanguage);
-
-      // Message 1: Instruction
-      messages.push({
-        role: "user",
-        content: instruction
-      });
-
-      if (extraContext.trim()) {
-        const shortExtraContext = extraContext.slice(0, 1500);
-        messages.push({
-          role: "user",
-          content: `Additional context that you MUST incorporate:\n${shortExtraContext.trim()}`
-        });
-      }
-
-      // Message 1: Context Data
-      messages.push({
-        role: "user",
-        content: `Here is context about  results, championship standings, driver stats and important events that happened throughout the season:\n\n${context}`
-      });
-
-      // Message 3: Final instructions
-      messages.push({
-        role: "user",
-        content: finalInstruction
-      });
-
-      // Ensure {{language}} placeholders are always substituted in every prompt message
-      messages = messages.map(m => ({
-        ...m,
-        content: replaceLanguagePlaceholder(m.content, selectedLanguage)
-      }));
     }
 
-    console.log("Final messages for AI:", messages);
-
-    // 6) Llama a la IA y guarda
-    const articleText = await askGenAI(messages);
-    const parsedJson = tryParseJsonObject(articleText);
+    const articleText = buildLocalArticleFromContext(newData, context, extraContext);
     let translatedTitle = "";
-    let cleanedArticleText = "";
-
-    if (parsedJson && typeof parsedJson.body === "string" && parsedJson.body.trim()) {
-      cleanedArticleText = cleanArticleOutput(parsedJson.body);
-      if (typeof parsedJson.title === "string") {
-        translatedTitle = parsedJson.title.trim();
-      }
-    } else {
-      cleanedArticleText = cleanArticleOutput(articleText);
-    }
+    let cleanedArticleText = cleanArticleOutput(articleText);
 
     newData.text = cleanedArticleText;
     if (translatedTitle) {
@@ -1702,8 +1629,6 @@ async function manageRead(newData, newsList, barProgressDiv, interval, opts = {}
         openedNewsTitle.textContent = translatedTitle;
       }
     }
-    updateRateLimitsDisplay();
-
     const patch = { text: cleanedArticleText };
     if (translatedTitle) {
       patch.title = translatedTitle;
@@ -1729,43 +1654,6 @@ function cleanArticleOutput(rawMd) {
   md = italicizeQuotes(md);
 
   return md.trim();
-}
-
-function safeJsonParse(raw) {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function tryParseJsonObject(raw) {
-  if (typeof raw !== "string") return null;
-  let text = raw.trim();
-  if (!text) return null;
-
-  if (text.startsWith("```")) {
-    text = text
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-  }
-
-  let parsed = safeJsonParse(text);
-  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-    return parsed;
-  }
-
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
-  if (first !== -1 && last !== -1 && last > first) {
-    parsed = safeJsonParse(text.slice(first, last + 1));
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
 }
 
 function removeLeading(md) {
@@ -3168,38 +3056,6 @@ async function contextualizeSeasonReview(newData) {
   };
 }
 
-
-async function askGenAI(messages, opts = {}) {
-  if (shouldUseDesktopMode()) {
-    const error = new Error("AI article generation is disabled in the local Mac app.");
-    error.status = 501;
-    throw error;
-  }
-
-  const response = await fetch("/api/ask-openai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages,
-      max_tokens: opts.max_tokens || 4000
-    })
-  });
-
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    // ignore JSON parse errors
-  }
-
-  if (!response.ok) {
-    const error = new Error(data.error || "AI request failed");
-    error.status = response.status;
-    throw error;
-  }
-
-  return data.text;
-}
 
 newsOptionsBtn.addEventListener("click", (e) => {
   const btn = e.currentTarget;
@@ -5528,7 +5384,7 @@ function renderCustomNewsParams(type, options) {
     const infoCol = makeCol("full");
     promptCol.append(
       makeLabel("customNewsPrompt", "Article prompt"),
-      makeTextarea({ id: "customNewsPrompt", placeholder: "Describe the story you want the AI to write. The article will still be grounded in the save context and current standings." })
+      makeTextarea({ id: "customNewsPrompt", placeholder: "Describe the story you want to add. The article will be grounded in the save context and current standings." })
     );
 
     row.append(galleryCol, promptCol, infoCol);

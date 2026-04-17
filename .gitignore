@@ -14,15 +14,12 @@ assets/custom/*.jpeg
 !base24_config.json
 dist/
 release/
-/patreon/
 *.txt
 resize_images.js
 .vscode/
 test/
 .env
-.vercel/
 .env*.local
 AGENTS.md
 *.tsx
-.vercel
 scripts/
