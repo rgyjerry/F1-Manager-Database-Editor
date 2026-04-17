@@ -4,6 +4,16 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.5 - 2026-04-17
+
+### Changed
+
+- Webpack now cleans `dist/` before each build so removed UI, worker chunks, data files, and assets cannot survive in the packaged Mac app as stale build output.
+
+### Removed
+
+- Removed the Google Analytics tag from the local app HTML.
+
 ## 3.5.10-local.4 - 2026-04-17
 
 ### Removed
