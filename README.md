@@ -29,8 +29,7 @@ Removed from this repo:
 - Hosted login/logout and rate-limit helpers.
 - OpenAI article-generation calls.
 - Web deployment configuration.
-
-News articles are reviewed locally from save data already available in the app.
+- News and Turning Point generation mechanisms.
 
 ## Build The Mac App
 

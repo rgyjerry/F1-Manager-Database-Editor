@@ -3,8 +3,9 @@ import { engine_unitValueToValue } from "./carConstants.js";
 import { manageDifficultyTriggers, manageRefurbishTrigger, editFreezeMentality, fetchExistingTriggers, editFreezeDevelopment } from "./triggerUtils.js";
 import { getMetadata, queryDB } from "../dbManager.js";
 import { getGlobals } from "../commandGlobals.js";
-import { customColors, default_dict, defaultColors, defaultTurningPointsFrequencyPreset } from "../../frontend/config.js";
-import { _standingsCache, rebuildStandingsUntil, rebuildStandingsUntilCached } from "./newsUtils.js";
+import { customColors, default_dict, defaultColors, combined_dict, races_names, countries_data } from "../../frontend/config.js";
+
+const _standingsCache = new Map();
 
 
 /**
@@ -901,6 +902,121 @@ function getSeasonRaceIds(season) {
     WHERE SeasonID = ?
     ORDER BY RaceID ASC
   `, [season], 'allRows') || []).map(r => Number(r[0]));
+}
+
+function insertSpacesInCompactName(str) {
+  return String(str || "")
+    .replace(/([A-Z])/g, ' $1')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function getCircuitInfoForStandings(raceId) {
+  const trackId = queryDB(`SELECT TrackID FROM Races WHERE RaceID = ?`, [raceId], 'singleValue');
+  const code = races_names[Number(trackId)];
+  if (!code) return { country: "Unknown Circuit" };
+  return countries_data[code] || { country: code };
+}
+
+function rebuildStandingsUntilCached(season, seasonResults, raceId, includeCurrentRacePrevResults = false, includeCurrentRacePoints = true) {
+  const key = `${season}:${raceId}:${includeCurrentRacePrevResults}:${includeCurrentRacePoints}`;
+  if (_standingsCache.has(key)) return _standingsCache.get(key);
+  const res = rebuildStandingsUntil(seasonResults, raceId, includeCurrentRacePrevResults, includeCurrentRacePoints);
+  _standingsCache.set(key, res);
+  return res;
+}
+
+function rebuildStandingsUntil(seasonResultsRaw, raceId, includeCurrentRacePrevResults = false, includeCurrentRacePoints = true, isQuali = false) {
+  const seasonResults = (seasonResultsRaw || [])
+    .map(d => (d?.data && typeof d.data === "object") ? d.data : d)
+    .filter(d => d && typeof d.driverName === "string" && Array.isArray(d.races));
+
+  const driverMap = {};
+  const teamMap = {};
+  let racesNames = [];
+  const driversResults = [];
+
+  seasonResults.forEach(driverRec => {
+    const name = driverRec.driverName;
+    let resultsString = "";
+    let driverRaces = [];
+    let nPodiums = 0;
+    let nWins = 0;
+    let nPointsFinishes = 0;
+
+    const races = driverRec.races;
+
+    const totalDriverPoints = races.reduce((sum, r) => {
+      const thisRaceId = Number(r.raceId);
+      if (thisRaceId <= raceId) {
+        if (thisRaceId < raceId || includeCurrentRacePrevResults) {
+          driverRaces.push(getCircuitInfoForStandings(thisRaceId).country);
+          const fin = parseInt(r.finishingPos);
+          if (!isQuali) {
+            resultsString += (fin !== -1 ? `P${fin}` : "DNF") + ", ";
+          } else {
+            resultsString += (r.qualifyingPos !== 99 ? `P${r.qualifyingPos}` : `P${r.startingPos}`) + ", ";
+          }
+          if (fin === 1) nWins++;
+          if (fin > 0 && fin <= 3) nPodiums++;
+          if ((parseInt(r.points) || 0) > 0) nPointsFinishes++;
+        }
+        if (thisRaceId < raceId || includeCurrentRacePoints) {
+          const pts = (Number(r.points) > 0) ? Number(r.points) : 0;
+          const sprintPts = (r.sprintPoints != null && Number(r.sprintPoints) !== -1) ? Number(r.sprintPoints) : 0;
+          return sum + pts + sprintPts;
+        }
+      }
+      return sum;
+    }, 0);
+
+    if (resultsString.endsWith(", ")) resultsString = resultsString.slice(0, -2);
+
+    if (driverRaces.length > racesNames.length) {
+      racesNames = driverRaces;
+    }
+
+    driverMap[name] = {
+      name: insertSpacesInCompactName(name),
+      driverId: driverRec.driverId,
+      points: totalDriverPoints,
+      teamId: driverRec.latestTeamId,
+      gapToLeader: 0,
+    };
+
+    driversResults.push({
+      name: insertSpacesInCompactName(name),
+      resultsString,
+      nPodiums,
+      nWins,
+      teamId: driverRec.latestTeamId,
+      nPointsFinishes
+    });
+
+    races.forEach(r => {
+      const thisRaceId = Number(r.raceId);
+      if (thisRaceId <= raceId) {
+        const teamId = Number(r.teamId);
+        const pts = (Number(r.points) > 0) ? Number(r.points) : 0;
+        const sprintPts = (r.sprintPoints != null && Number(r.sprintPoints) !== -1) ? Number(r.sprintPoints) : 0;
+        teamMap[teamId] = (teamMap[teamId] || 0) + pts + sprintPts;
+      }
+    });
+  });
+
+  const driverStandings = Object.values(driverMap).sort((a, b) => b.points - a.points);
+  if (driverStandings.length > 0) {
+    const leaderPoints = driverStandings[0].points;
+    driverStandings.forEach(driver => {
+      driver.gapToLeader = leaderPoints - driver.points;
+    });
+  }
+
+  const teamStandings = Object.entries(teamMap)
+    .map(([teamId, points]) => ({ teamId: Number(teamId), points }))
+    .sort((a, b) => b.points - a.points);
+
+  return { driverStandings, teamStandings, driversResults, racesNames };
 }
 
 export function buildPerRaceTeamRankContext(seasonResults, raceIds, season) {
@@ -3239,11 +3355,6 @@ export function insertDefualtEnginesData(list, stats, allocations, customSave, e
       queryDB(`INSERT OR REPLACE INTO Custom_Save_Config (key, value) VALUES (?, ?)`, [key, newTeam], 'run');
     }
 
-    queryDB(
-      `INSERT OR IGNORE INTO Custom_Save_Config (key, value) VALUES ('turningPointsFrequencyPreset', ?)`,
-      [String(defaultTurningPointsFrequencyPreset)],
-      'run'
-    );
   }
 
 
@@ -3519,7 +3630,6 @@ export function updateCustomConfig(data) {
   const secondaryColor = data.secondaryColor;
   const difficulty = data.difficulty
   const playerTeam = data.playerTeam
-  const turningPointsFrequencyPreset = data.turningPointsFrequencyPreset;
   const forceEditorMinimapColors = data.forceEditorMinimapColors;
   console.log("Updating custom config with data:", data);
 
@@ -3583,11 +3693,6 @@ export function updateCustomConfig(data) {
       VALUES ('secondaryColor', ?)
     `, [secondaryColor], 'run');
   }
-
-  queryDB(`
-    INSERT OR REPLACE INTO Custom_Save_Config (key, value)
-    VALUES ('turningPointsFrequencyPreset', ?)
-  `, [turningPointsFrequencyPreset], 'run');
 
   queryDB(`
     INSERT OR REPLACE INTO Custom_Save_Config (key, value)
@@ -3679,7 +3784,6 @@ export function fetchCustomConfig() {
     teams: {},
     primaryColor: null,
     secondaryColor: null,
-    turningPointsFrequencyPreset: defaultTurningPointsFrequencyPreset,
     forceEditorMinimapColors: 0,
     renaultEngine: 'renault'
   };
@@ -3696,8 +3800,6 @@ export function fetchCustomConfig() {
     }
     else if (key === 'difficulty') {
       config.difficulty = value;
-    } else if (key === 'turningPointsFrequencyPreset') {
-      config.turningPointsFrequencyPreset = parseInt(value, 10);
     } else if (key === 'renaultEngine') {
       if (String(value).toLowerCase() === 'honda') {
         config.renaultEngine = 'honda';
@@ -3746,6 +3848,127 @@ export function setCustomSaveConfig(key, value) {
   `, [key, value], 'run');
 }
 
+function buildGridLineupsData(season) {
+  const globals = getGlobals();
+  const teamIds = globals.isCreateATeam
+    ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 32]
+    : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const currentTeamFilterSql = globals.isCreateATeam
+    ? `(TeamID BETWEEN 1 AND 10 OR TeamID = 32)`
+    : `(TeamID BETWEEN 1 AND 10)`;
+  const currentContractsRows = queryDB(
+    `SELECT StaffID, TeamID
+        FROM Staff_Contracts
+        WHERE ContractType = 0
+          AND PosInTeam <= 2
+          AND EndSeason >= ?
+          AND ${currentTeamFilterSql}`,
+    [season],
+    'allRows'
+  ) || [];
+  const currentTeamByDriver = new Map();
+  currentContractsRows.forEach((row) => {
+    const driverId = Number(row[0]);
+    const teamId = Number(row[1]);
+    if (!Number.isNaN(driverId) && !Number.isNaN(teamId)) {
+      currentTeamByDriver.set(driverId, teamId);
+    }
+  });
+
+  const teamsDict = {};
+
+  teamIds.forEach(teamId => {
+    const teamName = combined_dict[teamId] || "Unknown Team";
+    const teamInfo = {
+      name: teamName,
+      teamId,
+      driversNextSeason: [],
+      driversThisSeason: []
+    };
+
+    const driversThisSeason = queryDB(
+      `SELECT bas.FirstName, bas.LastName, dri.StaffID, con.TeamID, con.ContractType, con.PosInTeam, num.Number
+          FROM Staff_BasicData bas
+          JOIN Staff_DriverData dri
+            ON bas.StaffID = dri.StaffID
+          JOIN Staff_Contracts con
+              ON bas.StaffID = con.StaffID
+          LEFT JOIN Staff_DriverNumbers num
+              ON num.CurrentHolder = bas.StaffID
+          WHERE con.TeamID = ?
+            AND con.PosInTeam <= 2
+            AND con.ContractType = 0
+            AND con.EndSeason >= ?
+          ORDER BY con.PosInTeam, con.ContractType, dri.StaffID`, [teamId, season],
+      'allRows'
+    ) || [];
+
+    const driversNextSeason = queryDB(
+      `SELECT bas.FirstName, bas.LastName, dri.StaffID, con.TeamID, con.ContractType, con.PosInTeam, num.Number
+          FROM Staff_BasicData bas
+          JOIN Staff_DriverData dri
+            ON bas.StaffID = dri.StaffID
+          JOIN Staff_Contracts con
+              ON bas.StaffID = con.StaffID
+          LEFT JOIN Staff_DriverNumbers num
+              ON num.CurrentHolder = bas.StaffID
+          WHERE con.TeamID = ?
+            AND con.PosInTeam <= 2
+            AND con.ContractType IN (0,3)
+            AND con.EndSeason > ?
+          ORDER BY con.PosInTeam, con.ContractType, dri.StaffID`, [teamId, season],
+      'allRows'
+    ) || [];
+
+    const seenThisSeason = new Set();
+    driversThisSeason.forEach(d => {
+      const name = formatNamesSimple(d);
+      const driverId = Number(name[1]);
+      if (seenThisSeason.has(driverId)) return;
+      seenThisSeason.add(driverId);
+      const driverNumber = Number(d[6]);
+      teamInfo.driversThisSeason.push({
+        name: insertSpacesInCompactName(name[0]),
+        driverId,
+        posInTeam: Number(d[5]) || null,
+        contractType: Number(d[4]) || 0,
+        driverNumber: !Number.isNaN(driverNumber) && driverNumber > 0 ? driverNumber : null
+      });
+    });
+
+    const seenNextSeason = new Set();
+    driversNextSeason.forEach(d => {
+      const name = formatNamesSimple(d);
+      const contractType = Number(d[4]) || 0;
+      const driverId = Number(name[1]);
+      if (seenNextSeason.has(driverId)) return;
+      seenNextSeason.add(driverId);
+      const driverNumber = Number(d[6]);
+      const currentTeamId = Number(currentTeamByDriver.get(driverId));
+      const isTeamChangeForNextSeason = contractType === 3 && currentTeamId !== teamId;
+      teamInfo.driversNextSeason.push({
+        name: insertSpacesInCompactName(name[0]),
+        driverId,
+        posInTeam: Number(d[5]) || null,
+        contractType,
+        driverNumber: !Number.isNaN(driverNumber) && driverNumber > 0 ? driverNumber : null,
+        isForNextSeason: isTeamChangeForNextSeason
+      });
+    });
+
+    teamsDict[teamId] = teamInfo;
+  });
+
+  return { teamIds, teamsDict };
+}
+
+export function getCurrentAndNextSeasonGridLineups() {
+  const daySeason = queryDB(`SELECT Day, CurrentSeason FROM Player_State`, [], 'singleRow');
+  const season = daySeason[1];
+  const { teamIds, teamsDict } = buildGridLineupsData(season);
+  return { season, teamIds, teams: teamsDict };
+}
+
 function fetchPlayerTeam() {
   const playerTeam = queryDB(`
       SELECT TeamID
@@ -3782,14 +4005,6 @@ export function fetch2026ModData() {
     const value = row[1];
     config[key] = value;
   });
-
-  // Also return the aduo turning points flag so the 2026 mods UI can restore the toggle state.
-  const aduoEnabled = queryDB(
-    `SELECT value FROM Custom_Save_Config WHERE key = 'aduo_tp_enabled'`,
-    [],
-    'singleValue'
-  );
-  config.aduo_tp_enabled = aduoEnabled ?? "0";
 
   return config;
 }

@@ -2,8 +2,9 @@ import { races_names, names_full, team_dict, codes_dict, countries_data, combine
 import { resetH2H, queueAutoCompareDrivers } from './head2head';
 import { game_version, custom_team, manageSaveButton, new_update_notifications, seasonModData, updateFront } from "./renderer";
 import { insert_space, manageColor, setCurrentSeason, format_name } from "./transfers";
-import { news_insert_space } from "../backend/scriptUtils/newsUtils.js";
 import { Command } from "../backend/command.js";
+
+const formatCompactName = (str) => insert_space(String(str || "")).replace(/\s+/g, ' ');
 
 
 
@@ -2423,8 +2424,8 @@ function populateComparisonsSeasonReview(comparisons, teamsStandings) {
 
     const buildRow = (item, score1, score2) => {
         const teamId = Number(item?.teamId ?? item?.TeamID ?? item?.teamID ?? -1);
-        const driver1Name = news_insert_space(item?.driver1Name ?? item?.Driver1Name ?? "");
-        const driver2Name = news_insert_space(item?.driver2Name ?? item?.Driver2Name ?? "");
+        const driver1Name = formatCompactName(item?.driver1Name ?? item?.Driver1Name ?? "");
+        const driver2Name = formatCompactName(item?.driver2Name ?? item?.Driver2Name ?? "");
         const driver1Surname = getSurname(driver1Name);
         const driver2Surname = getSurname(driver2Name);
 
@@ -2551,7 +2552,7 @@ function populateDriversStandingsSeasonReview(data, meta = {}) {
         const nameSpan = document.createElement("span");
         const surnameSpan = document.createElement("span");
         surnameSpan.className = "bold-font";
-        const fullName = news_insert_space(String(driver.DriverName ?? ""));
+        const fullName = formatCompactName(String(driver.DriverName ?? ""));
         const nameParts = fullName.split(" ");
         format_name(fullName, nameParts, nameSpan, surnameSpan, true);
         nameDiv.appendChild(nameSpan);
@@ -2798,7 +2799,7 @@ function populateQualifyingAnalysisSeasonReview(data) {
 
     const buildRow = (entry, position, count) => {
         const teamId = Number(entry?.teamId ?? entry?.TeamID ?? entry?.teamID ?? -1);
-        const fullName = news_insert_space(entry?.name ?? entry?.DriverName ?? "");
+        const fullName = formatCompactName(entry?.name ?? entry?.DriverName ?? "");
         const surname = getSurname(fullName);
 
         const row = document.createElement("div");
@@ -2920,7 +2921,7 @@ function populateWinsDriversSeasonReview(data) {
 
         const nameDiv = document.createElement("div");
         nameDiv.className = "season-review-wins-name";
-        const fullName = news_insert_space(record?.name ?? "");
+        const fullName = formatCompactName(record?.name ?? "");
         const surname = fullName.split(" ").pop();
         const nameSpan = document.createElement("span");
         nameSpan.textContent = fullName.replace(surname, "");
@@ -3088,7 +3089,7 @@ function populateDriverOfTheDaySeasonReview(data) {
 
         const nameDiv = document.createElement("div");
         nameDiv.className = "season-review-wins-name";
-        const fullName = news_insert_space(d?.name ?? "");
+        const fullName = formatCompactName(d?.name ?? "");
         const surname = fullName.split(" ").pop();
         const surnameSpan = document.createElement("span");
         surnameSpan.className = "bold-font";
@@ -3246,7 +3247,7 @@ function populatePodiumsDriversSeasonReview(podiumsRecords) {
 
         const nameDiv = document.createElement("div");
         nameDiv.className = "season-review-wins-name";
-        const fullName = news_insert_space(record?.name ?? "");
+        const fullName = formatCompactName(record?.name ?? "");
         const surname = fullName.split(" ").pop();
         const surnameSpan = document.createElement("span");
         surnameSpan.className = "bold-font";
@@ -4796,7 +4797,7 @@ export function loadRecordsList(data) {
 
         let recordName = document.createElement("div")
         recordName.classList = "record-name"
-        let fullName = news_insert_space(record.name)
+        let fullName = formatCompactName(record.name)
         let surname = fullName.split(" ").pop()
         let nameSpan = document.createElement("span")
         nameSpan.textContent = fullName.replace(surname, "")

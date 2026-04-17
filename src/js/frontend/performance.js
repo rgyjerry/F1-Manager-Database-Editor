@@ -933,7 +933,7 @@ if (performanceAnnotationsToggleInput) {
         if (!performanceGraph?.options?.plugins?.annotation) return;
         if (!Array.isArray(performanceGraph?.data?.labels)) return;
 
-        applyAduoUpgradeAnnotations(currentData?.[2], currentData?.[1], performanceGraph.data.labels.length);
+        applyEngineUpgradeAnnotations(currentData?.[2], currentData?.[1], performanceGraph.data.labels.length);
         performanceGraph.update();
     });
 }
@@ -1539,7 +1539,7 @@ export function reload_performance_graph() {
 
 export function load_performance_graph(data) {
     currentData = data
-    const aduoUpgradeRaceIds = Array.isArray(data?.[2]) ? data[2] : [];
+    const engineUpgradeRaceIds = Array.isArray(data?.[2]) ? data[2] : [];
     let labelsArray = []
     data[1].forEach(function (elem) {
         labelsArray.push(races_names[elem[2]])
@@ -1549,7 +1549,7 @@ export function load_performance_graph(data) {
         performanceGraph.destroy();
     }
     createPerformanceChart(labelsArray)
-    applyAduoUpgradeAnnotations(aduoUpgradeRaceIds, data?.[1], labelsArray.length)
+    applyEngineUpgradeAnnotations(engineUpgradeRaceIds, data?.[1], labelsArray.length)
     performanceGraph.update()
     let teamPerformances = {};
 
@@ -1594,7 +1594,7 @@ export function load_performance_graph(data) {
     performanceGraph.update();
 }
 
-function applyAduoUpgradeAnnotations(raceIds, races, labelCount) {
+function applyEngineUpgradeAnnotations(raceIds, races, labelCount) {
     if (!performanceGraph?.options?.plugins?.annotation) return;
 
     const ids = Array.isArray(raceIds)
@@ -1618,7 +1618,7 @@ function applyAduoUpgradeAnnotations(raceIds, races, labelCount) {
         const boundaryIndex = labelIndex - 1; // La línea se dibuja antes del índice de la etiqueta correspondiente
         if (boundaryIndex <= 0) continue;
 
-        annotations[`aduo_engine_${raceId}`] = {
+        annotations[`engine_upgrade_${raceId}`] = {
             type: 'line',
             xMin: boundaryIndex,
             xMax: boundaryIndex,
@@ -1728,6 +1728,5 @@ function createPerformanceChart(labelsArray) {
         }
     );
 }
-
 
 

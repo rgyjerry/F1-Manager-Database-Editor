@@ -66,9 +66,6 @@
     --table-hover-text: #292929;
     --session-results-hover: #4a4a4a;
 
-    --news-overlays-text: #dedde6;
-    --news-date-text: #292929;
-
     --primary-gradient: linear-gradient(to right, var(--new-primary) 0%, #ffb38c 100%);
 
     --scrollbar-hover: color-mix(in srgb, var(--white-general) 70%, var(--elements));
@@ -629,9 +626,6 @@ body.vaporwave-theme {
 
     --positive-general: #5dfbc0;
     --negative-general: #ff477e;
-
-    --news-overlays-text: #fae6ff;
-    --news-date-text: #0d0221;
 
     --primary-gradient: linear-gradient(to right, var(--new-primary), var(--new-secondary));
 

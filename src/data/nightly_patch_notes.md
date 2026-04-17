@@ -35,7 +35,6 @@
 - Added performance overview in "Performance" tab
 - Added expertise editing in "Performance" tab
 - Added engine upgrades over performance chart in "Performance" tab
-- Added ADUO (Additional Development and Upgrade Opportunities) turning points, toggable from the "Settings" modal and the 2026 season mod tab
 - Added engine upgrades annotations and annotations toggle in "Performance" tab
 - Changed F2/F3 logos to improve readability
 - Minor UI fixes

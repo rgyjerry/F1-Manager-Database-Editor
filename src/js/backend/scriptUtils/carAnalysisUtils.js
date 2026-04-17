@@ -1586,7 +1586,7 @@ export function getPerformanceAllTeamsSeason(customTeam = false, options = {}) {
     return [racesPerformances, allRaces];
 }
 
-export function getAduoEngineUpgradeRaceIds(seasonId = null) {
+export function getEngineEditRaceIds(seasonId = null) {
     const resolvedSeasonId = Number(seasonId) || Number(queryDB(`SELECT CurrentSeason FROM Player_State`, [], 'singleValue')) || null;
     if (!resolvedSeasonId) return [];
 
@@ -1601,7 +1601,7 @@ export function getAduoEngineUpgradeRaceIds(seasonId = null) {
         SELECT DISTINCT RaceID
         FROM Custom_Engine_Progression
         WHERE SeasonID = ?
-          AND Source IN ('pre_aduo_tp', 'pre_engine_edit')
+          AND Source = 'pre_engine_edit'
         ORDER BY RaceID ASC
     `, [resolvedSeasonId], 'allRows') || [];
 
@@ -1721,6 +1721,5 @@ export function deleteCustomEngineAndReassign(engineIdRaw, fallbackEngineIdRaw) 
 
     return { ok: true, fallbackEngineId, reassignedTeams: teamsSupplied.length };
 }
-
 
 

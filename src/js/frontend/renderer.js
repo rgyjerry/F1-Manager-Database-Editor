@@ -5,7 +5,7 @@ import {
     populateSeasonReview,
     onSessionResultsFetched
 } from './seasonViewer';
-import { combined_dict, abreviations_dict, codes_dict, logos_disc, mentality_to_global_menatality, difficultyConfig, default_dict, weightDifConfig, defaultDifficultiesConfig, defaultTurningPointsFrequencyPreset, turningPointsFrequencyLabels, themeToolbarLogos } from './config';
+import { combined_dict, abreviations_dict, codes_dict, logos_disc, mentality_to_global_menatality, difficultyConfig, default_dict, weightDifConfig, defaultDifficultiesConfig, themeToolbarLogos } from './config';
 import {
     freeDriversDiv, insert_space, place_staff, remove_drivers, add_marquees_transfers, place_drivers, sortList, update_name,
     manage_modal,
@@ -27,7 +27,6 @@ import {
     resetH2H, hideComp, colors_dict, load_drivers_h2h, sprintsListeners, racePaceListener, qualiPaceListener, manage_h2h_bars, load_labels_initialize_graphs,
     reload_h2h_graphs, init_colors_dict, edit_colors_dict, setMidGrid, setMaxRaces, setRelativeGrid
 } from './head2head';
-import { place_news, updateNewsYearsButton } from './news.js';
 import { load_regulations, gather_regulations_data } from './regulations.js';
 import { loadRecordsList, loadTeamRecordsList } from './seasonViewer';
 import { resetStaffIDChanges, updateEditsWithModData } from '../backend/scriptUtils/modUtils.js';
@@ -39,7 +38,7 @@ import { createTeamReplacers, logos_configs, pretty_names } from "./teamReplacem
 
 import bootstrap from "bootstrap/dist/js/bootstrap.bundle.min.js";
 import { getRecentHandles, saveHandleToRecents, removeRecentHandle } from './recentsManager.js';
-import { initSeasonMods, syncAduoTpToggles, syncMods2025Dependencies, syncMods2026Dependencies, syncMods2026ApplyAllButtonState, updateMod2025Blocking, updateMod2026Blocking } from './seasonMods.js';
+import { initSeasonMods, syncMods2025Dependencies, syncMods2026Dependencies, syncMods2026ApplyAllButtonState, updateMod2025Blocking, updateMod2026Blocking } from './seasonMods.js';
 import { getDesktopTier, isDesktopApp, openDesktopSaveFile, readDesktopRecentFile, saveDesktopFile, shouldUseDesktopMode } from './desktopBridge.js';
 
 
@@ -52,7 +51,6 @@ const carPill = document.getElementById("carpill");
 const viewPill = document.getElementById("viewerpill");
 const h2hPill = document.getElementById("h2hpill");
 const constructorsPill = document.getElementById("constructorspill")      
-const newsPill = document.getElementById("newspill")
 const modPill = document.getElementById("modpill")
 
 export const editorPill = document.getElementById("editorPill")
@@ -68,14 +66,13 @@ const viewDiv = document.getElementById("season_viewer");
 const h2hDiv = document.getElementById("head2head_viewer");
 const teamsDiv = document.getElementById("edit_teams");
 const seasonModsDiv = document.getElementById("season_mods")
-const newsDiv = document.getElementById("news")
 
 const patchNotesBody = document.getElementById("patchNotesBody")
 const selectImageButton = document.getElementById('selectImage');
 const userToolButton = document.getElementById('userToolButton');
 const saveFileButton = document.getElementById('saveFileButton');
 
-const scriptsArray = [newsDiv, h2hDiv, viewDiv, driverTransferDiv, editStatsDiv, teamsDiv, customCalendarDiv, regulationsDiv, carPerformanceDiv, seasonModsDiv]
+const scriptsArray = [h2hDiv, viewDiv, driverTransferDiv, editStatsDiv, teamsDiv, customCalendarDiv, regulationsDiv, carPerformanceDiv, seasonModsDiv]
 initSeasonMods();
 
 document.addEventListener("random-staff-requested", function (event) {
@@ -110,24 +107,7 @@ const themeOptions = document.querySelector(".theme-options");
 const status = document.querySelector(".status-info")
 const updateInfo = document.querySelector(".update-info")
 
-const turningPointsFrequencyConfig = document.getElementById("turningPointsFrequencyConfig");
-const turningPointsFrequencySlider = document.getElementById("turningPointsFrequencySlider");
-const turningPointsFrequencyLabel = document.getElementById("turningPointsFrequencyLabel");
 const forceEditorMinimapColorsToggle = document.getElementById("forceEditorMinimapColorsToggle");
-
-function updateTurningPointsFrequencyUI() {
-    if (!turningPointsFrequencySlider || !turningPointsFrequencyLabel) return;
-    const idx = parseInt(turningPointsFrequencySlider.value, 10);
-    turningPointsFrequencySlider.value = String(idx);
-    turningPointsFrequencyLabel.textContent = turningPointsFrequencyLabels[idx];
-    const directionClass =
-        idx === defaultTurningPointsFrequencyPreset
-            ? "tp-default"
-            : idx > defaultTurningPointsFrequencyPreset
-                ? "tp-more"
-                : "tp-less";
-    turningPointsFrequencyLabel.className = `option-state ${directionClass}`;
-}
 
 const fileInput = document.getElementById('fileInput');
 const saveFileInput = document.getElementById('saveFileInput');
@@ -177,11 +157,6 @@ let viewerLoaded = false;
 export let selectedTheme = "default-theme";
 let isNightlyHost = false;
 let hasThemeAccess = false;
-
-let newsAvailable = {
-    "normal": false,
-    "turning": false,
-}
 
 let versionNow;
 const versionPanel = document.querySelector('.version-panel');
@@ -312,8 +287,6 @@ function updateLocalFeatureAccess(tier) {
     document.querySelector(".user-name-and-logout-tool")?.classList.add("d-none");
     loadTheme();
     syncNightlyThemeVisibility();
-    manageNewsStatus(tier);
-    turningPointsFrequencyConfig?.classList.remove("d-none");
 }
 
 getUserTier().then(updateLocalFeatureAccess);
@@ -875,7 +848,6 @@ const messageHandlers = {
     "Mod data fetched": (message) => {
       seasonModData = message || {};
       updateEditsWithModData(message)
-      syncAduoTpToggles(message?.aduo_tp_enabled);
       syncMods2025Dependencies();
       syncMods2026Dependencies();
       syncMods2026ApplyAllButtonState();
@@ -890,26 +862,13 @@ const messageHandlers = {
         updateMod2026Blocking(message)
         resetStaffIDChanges();
     },
-    "News fetched": (message) => {
-        place_news(message, newsAvailable)
-        updateNewsYearsButton(message)
-        askFixDoublePointsBug(message)
-    },
-    "News from season fetched": (message) => {
-        place_news(message, newsAvailable)
-    },
     "Save selected finished": async (message) => {
-        await migrateLegacyNewsOnce();
-        generateNews();
     },
     "Record fetched": (message) => {
         loadRecordsList(message)
     },
     "Team record fetched": (message) => {
         loadTeamRecordsList(message)
-    },
-    "Double points bug fixed": (message) => {
-        //TODO CLICK ON THE FIRST EYAR OF yearMenu
     },
     "Season review data fetched": (message) => {
         populateSeasonReview(message)
@@ -918,68 +877,6 @@ const messageHandlers = {
         onSessionResultsFetched(message);
     }
 };
-
-function removeLegacyKeys(base) {
-    const lsNewsKey = `${base}_news`;
-    const lsTPKey = `${base}_tps`;
-    try {
-        console.log("[migrate] Deleting legacy localStorage keys:", lsNewsKey, lsTPKey);
-        localStorage.removeItem(lsNewsKey);
-        localStorage.removeItem(lsTPKey);
-    } catch (e) {
-        console.warn("[migrate] Failed to remove legacy keys:", e);
-    }
-}
-
-async function migrateLegacyNewsOnce() {
-    const base = getSaveName().split('.')[0];
-    const lsFlagKey = `${base}_migration_v1_done`;
-    const lsNewsKey = `${base}_news`;
-    const lsTPKey = `${base}_tps`;
-
-    // 1) Si ya está migrado, BORRAR SIEMPRE y salir
-    if (localStorage.getItem(lsFlagKey) === "1") {
-        removeLegacyKeys(base);
-        return;
-    }
-
-    // 2) Leer posibles datos legacy
-    const lsNewsTxt = localStorage.getItem(lsNewsKey);
-    const lsTPTxt = localStorage.getItem(lsTPKey);
-
-    // 3) Si no hay nada que migrar, marca flag y BORRA igual por si quedaron restos
-    if (!lsNewsTxt && !lsTPTxt) {
-        localStorage.setItem(lsFlagKey, "1");
-        removeLegacyKeys(base);
-        return;
-    }
-
-    // 4) Hay algo que migrar → pide al worker
-    try {
-        const resp = await new Command("migrateFromLocalStorage", {
-            base,
-            lsNewsTxt, // pueden ser null; el worker ya valida
-            lsTPTxt
-        }).promiseExecute();
-
-        // Considera como éxito "Migration done" o "Already migrated" por si reintentas
-        if (resp?.responseMessage === "Migration done" || resp?.responseMessage === "Already migrated") {
-            localStorage.setItem(lsFlagKey, "1");
-            removeLegacyKeys(base); // BORRA tras éxito
-        } else {
-            console.warn("[migrate] Unexpected response:", resp);
-            // Si quieres ser agresivo igualmente:
-            localStorage.setItem(lsFlagKey, "1");
-            removeLegacyKeys(base);
-        }
-    } catch (e) {
-        console.error("[migrate] Migration error (front):", e);
-        // No marcamos flag en error para poder reintentar después.
-        // Pero si quieres limpiar sí o sí, podrías optar por:
-        // removeLegacyKeys(base);
-    }
-}
-
 
 if (glowSpot && blockDiv) {
     const defaultPosition = {
@@ -1046,62 +943,6 @@ if (glowSpot && blockDiv) {
 
     resetGlowSpotPosition();
     window.addEventListener('mousemove', updateGlowSpotPosition);
-}
-
-export async function generateNews() {
-    const localTier = await getUserTier();
-    checkGenerableNews(localTier);
-
-    // lanzar sin payload, el worker lee de DB
-    new Command("generateNews", {}).execute();
-
-    // loader UI (igual que antes si quieres)
-    const newsView = document.getElementById("news");
-    const loaderDiv = document.createElement('div');
-    loaderDiv.classList.add('loader-div', 'general-news-loader');
-
-    const loadingSpan = document.createElement('span');
-    loadingSpan.textContent = "Updating news";
-    const loadingDots = document.createElement('span');
-    loadingDots.textContent = ".";
-    loadingDots.classList.add('loading-dots');
-    loadingSpan.textContent = "Updating news";
-    loadingSpan.appendChild(loadingDots);
-
-
-    setInterval(() => {
-        if (loadingDots.textContent.length >= 3) loadingDots.textContent = ".";
-        else loadingDots.textContent += ".";
-    }, 500);
-
-    const progressBar = document.createElement('div');
-    progressBar.classList.add('ai-progress-bar');
-    const progressDiv = document.createElement('div');
-    progressDiv.classList.add('progress-div', 'general-news-progress-div');
-
-    loaderDiv.appendChild(loadingSpan);
-    progressBar.appendChild(progressDiv);
-    loaderDiv.appendChild(progressBar);
-
-    startGeneralNewsProgress(progressDiv);
-    newsView.appendChild(loaderDiv);
-}
-
-
-export function startGeneralNewsProgress(progressDiv) {
-    let width = 0;
-    const id = setInterval(() => {
-        if (!progressDiv?.isConnected) { clearInterval(id); return; }
-
-        if (width >= 100) {
-            clearInterval(id);
-            return;
-        }
-        width++;
-        progressDiv.style.width = width + '%';
-    }, 150);
-
-    progressDiv._progressIntervalId = id;
 }
 
 function update_engine_allocations(message) {
@@ -1399,14 +1240,6 @@ function manage_config_content(info, year_config = false) {
             forceEditorMinimapColorsToggle.checked = parseInt(info["forceEditorMinimapColors"] || 0, 10) === 1;
         }
 
-        if (turningPointsFrequencySlider) {
-            let presetIndex = info?.turningPointsFrequencyPreset;
-            if (presetIndex === undefined || presetIndex === null) {
-                presetIndex = defaultTurningPointsFrequencyPreset;
-            }
-            turningPointsFrequencySlider.value = String(presetIndex);
-            updateTurningPointsFrequencyUI();
-        }
     }
 }
 
@@ -1604,9 +1437,6 @@ export function applyConfigFromEditorUI(overrides = {}) {
         playerTeam: playerTeam
     }
 
-    const tpPresetIndex = parseInt(turningPointsFrequencySlider.value, 10);
-    data.turningPointsFrequencyPreset = tpPresetIndex;
-
     changeTheme()
     if (custom_team) {
         data["primaryColor"] = document.getElementById("primarySelector").value
@@ -1648,7 +1478,6 @@ export function applyConfigFromEditorUI(overrides = {}) {
         configCopy.freezeDevelopment = freezeDevelopment;
         configCopy.forceEditorMinimapColors = forceEditorMinimapColors;
         configCopy.triggerList = triggerList;
-        configCopy.turningPointsFrequencyPreset = tpPresetIndex;
         if (data.primaryColor) {
             configCopy.primaryColor = data.primaryColor;
             configCopy.secondaryColor = data.secondaryColor;
@@ -1662,28 +1491,6 @@ export function applyConfigFromEditorUI(overrides = {}) {
 document.querySelector("#configDetailsButton").addEventListener("click", function () {
     applyConfigFromEditorUI();
 })
-
-async function askFixDoublePointsBug(message){
-    const bugInfo = message.doublePointsBug;
-    if (!bugInfo.result) return;
-    if (localStorage.getItem(`${saveName}_doublePointsBugIgnored_${bugInfo.raceId}`) === 'true') {
-        return;
-    }
-    const ok = await confirmModal({
-        title: 'Fix Double Points Bug',
-        body: 'The current save has a known issue with double points being awarded in certain races where a double DSQ Turning point happened. Do you want to fix this issue now?',
-        confirmText: 'Yes, fix it',
-        cancelText: 'No, ignore',
-    })
-    if (ok) {
-        const command = new Command("fixDoublePointsBug", { raceId: bugInfo.raceId });
-        command.execute();
-    }
-    else{
-        //save in lcoalstorage a flag that he didn't want to fix the bug with raceid bugInfo.raceId
-        localStorage.setItem(`${saveName}_doublePointsBugIgnored_${bugInfo.raceId}`, 'true');
-    }
-}
 
 let isDownloadingSave = false;
 let downloadSaveProgressStartedAt = 0;
@@ -1852,7 +1659,7 @@ function check_selected() {
 
 h2hPill.addEventListener("click", function () {
 
-    manageScripts("hide", "show", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("show", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(false)
@@ -1863,28 +1670,28 @@ viewPill.addEventListener("click", function () {
         viewerLoaded = true
         document.getElementById("reviewpill").click();
     }
-    manageScripts("hide", "hide", "show", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "show", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(false)
 })
 
 driverTransferPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "show", "hide", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "show", "hide", "hide", "hide", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(false)
 })
 
 editStatsPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "show", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "show", "hide", "hide", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(true, "stats")
 })
 
 constructorsPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "show", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "show", "hide", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(true, "teams")
@@ -1892,42 +1699,35 @@ constructorsPill.addEventListener("click", function () {
 
 
 CalendarPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "show", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "hide", "show", "hide", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(true, "calendar")
 })
 
 regulationsPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "show", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "show", "hide", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(true, "regulations")
 })
 
 carPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "show", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "show", "hide")
     scriptSelected = 1
     check_selected()
     manageSaveButton(!viewingGraph, "performance")
 })
 
 modPill.addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "show")
-    scriptSelected = 1
-    check_selected()
-    manageSaveButton(false)
-})
-
-newsPill.addEventListener("click", function () {
-    manageScripts("show", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "show")
     scriptSelected = 1
     check_selected()
     manageSaveButton(false)
 })
 
 document.querySelector(".toolbar-logo-and-title").addEventListener("click", function () {
-    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
+    manageScripts("hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
     scriptSelected = 0
     document.getElementById("blockDiv").classList.remove("disappear")    
     if (document.querySelector(".scriptPills.active")) {
@@ -1954,14 +1754,6 @@ settingsPill?.addEventListener("click", function () {
     document.querySelector("#editorChanges").classList.add("d-none")
     document.querySelector("#gameChanges").classList.add("d-none")
 })
-
-if (turningPointsFrequencySlider) {
-    updateTurningPointsFrequencyUI();
-    turningPointsFrequencySlider.addEventListener("input", updateTurningPointsFrequencyUI);
-}
-
-
-
 
 document.getElementById("freezeMentalityToggle").addEventListener("change", function () {
     let value = this.checked;
@@ -2165,34 +1957,6 @@ document.querySelector("#cancelDetailsButton").addEventListener("click", functio
 
 
 
-function manageNewsStatus(localTier) {
-    const generateNews = checkGenerableNews(localTier);
-    if (generateNews === "yes") {
-        const newsgenerationEnded = document.querySelector('.news-generation-ended');
-        if (newsgenerationEnded) {
-            newsgenerationEnded.remove();
-            const newsGrid = document.createElement('div');
-            newsGrid.className = 'news-grid';
-            document.querySelector('#news').appendChild(newsGrid);
-            generateNews();
-        }
-    }
-
-}
-
-function checkGenerableNews(localTier) {
-    let canGenerate = "no";
-    newsAvailable.normal = false;
-    newsAvailable.turning = false;
-    if (localTier.paidMember) {
-        canGenerate = "yes";
-        newsAvailable.normal = true;
-        newsAvailable.turning = true;
-    }
-    return canGenerate;
-}
-
-
 init_colors_dict()
 document.addEventListener('DOMContentLoaded', async () => {
     applyDesktopModeUI();
@@ -2242,17 +2006,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     let phrases = [
-        "Change the contract of every staff available in game",
+        "Open and edit F1 Manager save files locally",
+        "Use native Mac file dialogs for your saves",
+        "Tune teams, drivers, staff, calendars, regulations, and performance",
+        "Export edited saves from this Mac",
+        "Keep your editor workflow offline and local",
+        "Change contracts for drivers and staff",
         "Customize your calendar however you want it",
-        "Edit the attributes of each driver just how you want them",
+        "Edit each driver and staff profile",
         "Create your own custom engines",
-        "Review stories from your save locally",
         "Compare drivers and teams with detailed graphs",
-        "Modify car performance to your liking",
-        "Fix game-breaking issues with ease",
-        "Runs locally on your Mac",
-        "Honda, for the love of god, give Alonso a good engine for once",
-        "In memory of Aloy"
+        "Modify car performance to your liking"
     ];
 
     //reorder them randomly

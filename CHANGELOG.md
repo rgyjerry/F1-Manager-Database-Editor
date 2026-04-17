@@ -4,6 +4,20 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.4 - 2026-04-17
+
+### Removed
+
+- Removed the News tab, article modals, custom-news flows, and bundled News image/template assets.
+- Removed Turning Point configuration, generation, approval/cancel, storage, and related worker commands.
+- Removed ADUO Turning Point controls and engine-upgrade Turning Point annotations.
+- Removed external/social links from the app start screen and footer.
+
+### Changed
+
+- Updated the start screen copy to describe a local Mac save editor instead of a hosted browser app.
+- Kept season-viewer and lineup helpers local by moving the remaining data-only utilities out of the removed News module.
+
 ## 3.5.10-local.3 - 2026-04-17
 
 ### Security

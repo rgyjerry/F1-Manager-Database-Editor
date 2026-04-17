@@ -9,11 +9,11 @@ import {
   fetchPointsRegulations,
   fetchSessionResults,
   getDate,
-  setCustomSaveConfig,
   check2026ModCompatibility,
-  snapshotEnginePowerProgression
+  snapshotEnginePowerProgression,
+  getCurrentAndNextSeasonGridLineups
 } from "./scriptUtils/dbUtils";
-import { getPerformanceAllTeamsSeason, getAttributesAllTeams, getPerformanceAllCars, getAttributesAllCars, getAduoEngineUpgradeRaceIds } from "./scriptUtils/carAnalysisUtils"
+import { getPerformanceAllTeamsSeason, getAttributesAllTeams, getPerformanceAllCars, getAttributesAllCars, getEngineEditRaceIds } from "./scriptUtils/carAnalysisUtils"
 import { setDatabase, getMetadata, getDatabase } from "./dbManager";
 import { fetchHead2Head, fetchHead2HeadTeam } from "./scriptUtils/head2head";
 import { editTeam, fetchTeamData } from "./scriptUtils/editTeamUtils";
@@ -34,29 +34,6 @@ import { change2024Standings, changeDriverLineUps, changeStats, removeFastestLap
   updatePerofmrnace2026,
   changeAdditionalRegulations2026,
   fixesMod2026} from "./scriptUtils/modUtils";
-import {
-  generate_news, getOneQualiDetails, getOneRaceDetails, getTransferDetails, getTeamComparisonDetails,
-  getFullChampionSeasonDetails, generateTurningResponse, upsertNews,
-  updateNewsFields,
-  upsertTurningPoints,
-  loadTPFromDB,
-  getCurrentAndNextSeasonGridLineups,
-  computeStableKey,
-  migrateLegacyData,
-  loadNewsMapFromDB,
-  ensureTurningPointsStructure,
-  deleteNews,
-  deleteTurningPoints,
-  getNewsAndTpYearsAvailable,
-  getNewsFromSeason,
-  deleteNewByKey,
-  checkDoublePointsBug,
-  fixDoublePointsBug,
-  getFullFeederSeriesDetails,
-  getCustomNewsOptions,
-  getRaceDriversForCustomNews,
-  createCustomNewsEntry
-} from "./scriptUtils/newsUtils";
 import { fetchSeasonReviewData, getSelectedRecord, getSelectedTeamRecord, editRaceResults } from "./scriptUtils/recordUtils";
 import { teamReplaceDict } from "./commandGlobals";
 import { excelToDate } from "./scriptUtils/eidtStatsUtils";
@@ -173,8 +150,8 @@ const workerCommands = {
     postMessage({ responseMessage: "Numbers fetched", content: numbers });
 
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const aduoEngineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
-    postMessage({ responseMessage: "Season performance fetched", content: [performance, races, aduoEngineUpgradeRaceIds] });
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
+    postMessage({ responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds] });
 
     const attributes = getAttributesAllTeams(yearData[2]);
     postMessage({ responseMessage: "Performance fetched", content: [performance[performance.length - 1], attributes] });
@@ -255,7 +232,7 @@ const workerCommands = {
 
     const yearData = checkYearSave();
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const engineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
     postMessage({ responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds] });
 
     const attributes = getAttributesAllTeams(yearData[2]);
@@ -441,8 +418,8 @@ const workerCommands = {
     fitLoadoutsDict(data.loadouts, data.teamID)
 
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const aduoEngineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
-    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, aduoEngineUpgradeRaceIds], noti_msg: `Succesfully edited ${teamReplaceDict[data.teamName]}'s car performance` };
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
+    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds], noti_msg: `Succesfully edited ${teamReplaceDict[data.teamName]}'s car performance` };
     postMessage(performanceResponse);
 
     const attibutes = getAttributesAllTeams(yearData[2]);
@@ -471,7 +448,7 @@ const workerCommands = {
 
     const yearData = checkYearSave();
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const engineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
     postMessage({ responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds] });
 
     const attributes = getAttributesAllTeams(yearData[2]);
@@ -722,8 +699,8 @@ const workerCommands = {
     const yearData = checkYearSave();
 
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const aduoEngineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
-    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, aduoEngineUpgradeRaceIds] };
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
+    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds] };
     postMessage(performanceResponse);
 
     const attibutes = getAttributesAllTeams(yearData[2]);
@@ -745,8 +722,8 @@ const workerCommands = {
     const yearData = checkYearSave();
 
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
-    const aduoEngineUpgradeRaceIds = getAduoEngineUpgradeRaceIds();
-    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, aduoEngineUpgradeRaceIds] };
+    const engineUpgradeRaceIds = getEngineEditRaceIds();
+    const performanceResponse = { responseMessage: "Season performance fetched", content: [performance, races, engineUpgradeRaceIds] };
     postMessage(performanceResponse);
 
     const attibutes = getAttributesAllTeams(yearData[2]);
@@ -763,69 +740,6 @@ const workerCommands = {
     };
 
     postMessage(carPerformanceResponse);
-  },
-  generateNews: (data, postMessage) => {
-    try {
-      const savedNewsMap = loadNewsMapFromDB();   // ← desde DB
-      const tpStateFromDB = loadTPFromDB();        // ← desde DB
-
-      // si necesitas asegurar estructura mínima de TP, hazlo aquí
-      const tpState = ensureTurningPointsStructure(tpStateFromDB);
-
-      const { newsList, turningPointState } = generate_news(savedNewsMap, tpState);
-      const doublePointsBug = checkDoublePointsBug(turningPointState)
-      const yearsAvailable = getNewsAndTpYearsAvailable()
-
-      postMessage({
-        responseMessage: "News fetched",
-        noti_msg: "News generated successfully",
-        content: { newsList, turningPointState, yearsAvailable, doublePointsBug },
-        unlocksDownload: true
-      });
-    } catch (e) {
-      console.error("ERROR COMPLETO:", e);
-      console.error("STACK:", e.stack);
-      postMessage({ responseMessage: "Error", error: e.message });
-    }
-  },
-  getCustomNewsOptions: (data, postMessage) => {
-    const options = getCustomNewsOptions();
-    postMessage({ responseMessage: "Custom news options", content: options });
-  },
-  customNewsRaceDrivers: (data, postMessage) => {
-    const raceId = Number(data?.raceId);
-    const drivers = getRaceDriversForCustomNews(raceId);
-    postMessage({ responseMessage: "Custom news race drivers", content: drivers });
-  },
-  createCustomNews: (data, postMessage) => {
-    try {
-      const entry = createCustomNewsEntry(data || {});
-      entry.stableKey = entry.stableKey ?? computeStableKey(entry);
-      upsertNews([entry]);
-      postMessage({
-        responseMessage: "Custom news created",
-        noti_msg: "Custom news created",
-        content: entry,
-        isEditCommand: true,
-        unlocksDownload: true
-      });
-    } catch (e) {
-      console.error(e);
-      postMessage({ responseMessage: "Error", error: e.message, unlocksDownload: true });
-    }
-  },
-  fixDoublePointsBug: (data, postMessage) => {
-    const raceBugged = data.raceId;
-    fixDoublePointsBug(raceBugged);
-
-    postMessage({ responseMessage: "Double points bug fixed", noti_msg: "Double points bug fixed successfully", unlocksDownload: true });
-  },
-  getNewsFromSeason: (data, postMessage) => {
-    const season = data.season;
-    let newsAndTp = getNewsFromSeason(season);
-    const currentSeason = getGlobals().currentDate[1];
-    newsAndTp.isCurrentSeason = (season == currentSeason);
-    postMessage({ responseMessage: "News from season fetched", content: newsAndTp });
   },
   lineupsRequest: (data, postMessage) => {
     const lineups = getCurrentAndNextSeasonGridLineups();
@@ -918,107 +832,6 @@ const workerCommands = {
 
     postMessage({ responseMessage: "Season review data fetched", content: review });
   },
-  approveTurningPoint: (data, postMessage) => {
-    const turningPointData = data.turningPointData;
-    const type = data.type;
-    const maxDate = data.maxDate;
-    const originalStableKey = data.id;
-    const nonReadable = data.nonReadable || false;
-
-    const newResponse = generateTurningResponse(turningPointData, type, maxDate, "positive");
-
-    if (originalStableKey) {
-      updateNewsFields(originalStableKey, {
-        turning_point_type: "approved",
-        ...(nonReadable ? { nonReadable: true } : {})
-      });
-    }
-
-    if (newResponse) {
-      newResponse.stableKey = newResponse.stableKey ?? computeStableKey(newResponse);
-      upsertNews([newResponse]);
-    }
-
-    postMessage({ responseMessage: "Turning point positive", content: newResponse, isEditCommand: true, unlocksDownload: true });
-  },
-  cancelTurningPoint: (data, postMessage) => {
-    const turningPointData = data.turningPointData;
-    const type = data.type;
-    const maxDate = data.maxDate;
-    const originalStableKey = data.id;
-
-    const newResponse = generateTurningResponse(turningPointData, type, maxDate, "negative");
-
-
-    if (originalStableKey) {
-      updateNewsFields(originalStableKey, { turning_point_type: "cancelled" });
-    }
-
-    if (newResponse) {
-      newResponse.stableKey = newResponse.stableKey ?? computeStableKey(newResponse);
-      upsertNews([newResponse]);
-    }
-
-    postMessage({ responseMessage: "Turning point negative", noti_msg: "Cancelled turning point", content: newResponse, isEditCommand: true, unlocksDownload: true });
-  },
-  saveNewsState: (data, postMessage) => {
-    try {
-      upsertNews(data.newsList || []);
-      postMessage({ responseMessage: "News saved", noti_msg: "News saved successfully", isEditCommand: true, unlocksDownload: true });
-    } catch (e) {
-      console.error(e);
-      postMessage({ responseMessage: "Error", error: e.message, unlocksDownload: true });
-    }
-  },
-  updateNews: (data, postMessage) => {
-    try {
-      const ok = updateNewsFields(
-        data.stableKey,
-        data.patch || {} // { text, nonReadable, turning_point_type, ... }
-      );
-      postMessage({ responseMessage: ok ? "News updated" : "News not found", noti_msg: ok ? "News updated successfully" : "News not found", isEditCommand: true, unlocksDownload: true });
-    } catch (e) {
-      console.error(e);
-      postMessage({ responseMessage: "Error", error: e.message, unlocksDownload: true });
-    }
-  },
-  getNews: (data, postMessage) => {
-    const newsMap = loadNewsMapFromDB();
-    postMessage({ responseMessage: "News map", content: newsMap });
-  },
-  saveTurningPoints: (data, postMessage) => {
-    try {
-      upsertTurningPoints(data.turningPointState || {});
-      postMessage({ responseMessage: "Turning points saved successfully" });
-    } catch (e) {
-      console.error(e);
-      postMessage({ responseMessage: "Error", error: e.message, unlocksDownload: true });
-    }
-  },
-  getTurningPoints: (data, postMessage) => {
-    const turningPoints = loadTPFromDB();
-    postMessage({ responseMessage: "Turning points", content: turningPoints });
-  },
-  migrateFromLocalStorage: (data, postMessage) => {
-    try {
-      const { lsNewsTxt, lsTPTxt } = data || {};
-      const res = migrateLegacyData(lsNewsTxt, lsTPTxt);
-      postMessage({ responseMessage: "Migration done", status: res, noti_msg: "Migration completed successfully", isEditCommand: true, unlocksDownload: true });
-    } catch (e) {
-      console.error("Migration error (worker):", e);
-      postMessage({ responseMessage: "Error", error: e.message });
-    }
-  },
-  deleteNewsArticle: (data, postMessage) => {
-    const articleId = data.articleId;
-    const ok = deleteNewByKey(articleId);
-    postMessage({ responseMessage: ok ? "Article deleted successfully" : "Article not found", noti_msg: ok ? "Article deleted successfully" : "Article not found", isEditCommand: true, unlocksDownload: true });
-  },
-  deleteNews: (data, postMessage) => {
-    deleteNews();
-    deleteTurningPoints();
-    postMessage({ responseMessage: "News deleted successfully", unlocksDownload: true });
-  },
   enginesRefresh: (data, postMessage) => {
     const engines = fetchEngines();
     postMessage({ responseMessage: "Engines fetched", noti_msg: "Engines updated successfully", content: engines });
@@ -1063,16 +876,6 @@ const workerCommands = {
 
     postMessage({
       responseMessage: "2026 engines added",
-      isEditCommand: true,
-      unlocksDownload: true
-    });
-  },
-  updateAduoTPEnabled: (data, postMessage) => {
-    const enabled = data.enabled;
-    setCustomSaveConfig("aduo_tp_enabled", enabled);
-    postMessage({
-      responseMessage: "ADUO TP enabled updated",
-      noti_msg: `ADUO TP enabled set to ${enabled}`,
       isEditCommand: true,
       unlocksDownload: true
     });

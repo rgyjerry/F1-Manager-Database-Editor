@@ -5,10 +5,6 @@ import { applyConfigFromEditorUI, custom_team, replace_custom_team_logo, setRena
 let calendarEditMode = null, calendarEditMode2026 = null;
 let mods2026IlluminationTimeout = null;
 
-function normalizeToggleEnabled(value) {
-  return value === true || value === 1 || value === "1";
-}
-
 function clearMods2026Illumination() {
   if (mods2026IlluminationTimeout) {
     clearTimeout(mods2026IlluminationTimeout);
@@ -41,21 +37,6 @@ function scheduleMods2026Illumination() {
       mods2026View.classList.add("illuminated");
     }
   }, 2200);
-}
-
-function setAduoTpTogglesChecked(enabled) {
-  const aduoButton = document.querySelector("#mods2026View .change-aduo-tps-2026");
-  if (aduoButton) aduoButton.classList.toggle("completed", enabled);
-
-  const settingsToggle = document.getElementById("aduoTPSToggleSettings");
-  if (settingsToggle) settingsToggle.checked = enabled;
-}
-
-function updateAduoTpEnabled(enabled) {
-  setAduoTpTogglesChecked(enabled);
-  const command = new Command("updateAduoTPEnabled", { enabled });
-  command.execute();
-  syncMods2026ApplyAllButtonState();
 }
 
 function getCustomTeamName() {
@@ -330,23 +311,6 @@ function initMods2026Actions(){
 
   }
 
-  const aduoToggle = mods2026View.querySelector(".change-aduo-tps-2026");
-  if (aduoToggle) {
-    aduoToggle.addEventListener("click", function () {
-      this.classList.add("completed");
-      this.querySelector("span").textContent = "Applied";
-      updateAduoTpEnabled(this.classList.contains("completed"));
-    });
-  }
-
-  const settingsToggle = document.getElementById("aduoTPSToggleSettings");
-  if (settingsToggle && settingsToggle.dataset.aduoInit !== "1") {
-    settingsToggle.dataset.aduoInit = "1";
-    settingsToggle.addEventListener("change", function () {
-      updateAduoTpEnabled(this.checked);
-    });
-  }
-
   const applyAllButton = mods2026View.querySelector(".apply-all-2026");
 
   if (applyAllButton) {
@@ -359,9 +323,6 @@ function initMods2026Actions(){
 
         const btn = mods2026View.querySelector(".one-change-button:not(.completed):not(.disabled)");
         if (!btn) {
-          if (aduoToggle && !aduoToggle.classList.contains("completed")) {
-            aduoToggle.click();
-          }
           applyAllButton.dataset.running = "0";
           syncMods2026ApplyAllButtonState();
           return;
@@ -532,12 +493,6 @@ export function initSeasonMods() {
   }
 }
 
-export function syncAduoTpToggles(enabledRaw) {
-  const enabled = normalizeToggleEnabled(enabledRaw);
-  setAduoTpTogglesChecked(enabled);
-  syncMods2026ApplyAllButtonState();
-}
-
 export function syncMods2026ApplyAllButtonState() {
   const mods2026View = document.getElementById("mods2026View");
   if (!mods2026View) return;
@@ -546,13 +501,11 @@ export function syncMods2026ApplyAllButtonState() {
   if (!applyAllButton) return;
 
   const applyAllText = applyAllButton.querySelector("span");
-  const aduoToggle = mods2026View.querySelector(".change-aduo-tps-2026");
-
   const remaining = mods2026View.querySelectorAll(
     ".one-change-button:not(.completed):not(.disabled)"
   ).length;
 
-  const allApplied = remaining === 0 && (!aduoToggle || aduoToggle.classList.contains("completed"));
+  const allApplied = remaining === 0;
 
   applyAllButton.classList.toggle("applied", allApplied);
   if (applyAllText) applyAllText.textContent = allApplied ? "Applied" : "Apply all";
@@ -678,4 +631,3 @@ export function updateMod2025Blocking(data) {
     changesGrid.classList.add("d-none");
   }
 }
-
