@@ -4,6 +4,42 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.17 - 2026-04-20
+
+### Changed
+
+- Updated Performance page aero scores and per-team edits to use normalized car-part main stats only, ignoring engine power, engine durability, ERS durability, gearbox durability, and hidden lifespan-derived performance terms.
+
+## 3.5.10-local.16 - 2026-04-18
+
+### Added
+
+- Added Performance page actions to set built item counts for all currently fitted car-part designs and fit every team's latest completed parts in one operation.
+
+## 3.5.10-local.15 - 2026-04-18
+
+### Fixed
+
+- Centered Reload, Settings, and Setup toolbar labels during hover/active states and centered the unavailable Setup panel in the page body.
+
+## 3.5.10-local.14 - 2026-04-18
+
+### Added
+
+- Added a centered loading overlay while the current save is being reloaded.
+
+## 3.5.10-local.13 - 2026-04-18
+
+### Added
+
+- Added a toolbar Reload action that re-reads the currently loaded save from disk without selecting the file again.
+
+## 3.5.10-local.12 - 2026-04-17
+
+### Added
+
+- Added a Setup page that displays player-team car setups during an active pre-qualifying race weekend and can optimise both cars to the generated perfect setup.
+
 ## 3.5.10-local.11 - 2026-04-17
 
 ### Fixed

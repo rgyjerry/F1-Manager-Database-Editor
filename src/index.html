@@ -1552,6 +1552,13 @@
   </div>
   <div class="notification-panel pe-3 pt-3" id="notificationPanel">
   </div>
+  <div class="reload-save-overlay hidden" id="reloadSaveOverlay" aria-live="polite" aria-busy="true">
+    <div class="reload-save-card">
+      <div class="reload-save-spinner"></div>
+      <div class="reload-save-title bold-font">Reloading save</div>
+      <div class="reload-save-text" id="reloadSaveOverlayText">Reading latest save from disk...</div>
+    </div>
+  </div>
   <input type="text" class="dev-console d-none"></input>
   <div class="tools-panel">
     <div class="toolbar-logo-and-title">
@@ -1561,6 +1568,12 @@
         <span class="bold-font">EDITOR</span>
       </div>
     </div>
+    <div class="reload-container hidden my-2" id="reloadSaveButton" role="button" tabindex="0"
+      aria-label="Reload current save" aria-disabled="true">
+      <i class="bi bi-arrow-clockwise" id="reloadSaveIcon"></i>
+      <label class="bold-font standard-label">RELOAD</label>
+      <div class="standard-line"></div>
+    </div>
     <div class="gear-container my-2">
       <i class="bi bi-gear-fill" id="settingsIcon"></i>
       <label class="bold-font standard-label">SETTINGS</label>
@@ -1569,6 +1582,13 @@
     <div class="script-selector hidden bold-font">
       <div class="py-2">
         <ul class="nav nav-pills">
+          <li class="nav-item">
+            <a class="nav-link bold-font scriptPills" data-bs-toggle="pill" id="setuppill">
+              <i class="bi bi-sliders pill-icon"></i>
+              <label class="bold-font pill-label">SETUP</label>
+              <div class="pill-line"></div>
+            </a>
+          </li>
           <li class="nav-item">
             <a class="nav-link bold-font scriptPills" data-bs-toggle="pill" id="h2hpill">
               <i class="bi bi-bar-chart-fill pill-icon"></i>
@@ -1691,6 +1711,50 @@
               <span class="recent-label">Recent</span>
               <div class="recents-list" id="recentsList"></div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div class="script-view hide unloaded" id="setup_viewer">
+        <div class="general-top-panel">
+          <div class="title-buttons-left">
+            <div class="setup-track-meta">
+              <div class="setup-track-name bold-font" id="setupTrackName">Current race</div>
+              <div class="setup-weekend-meta" id="setupWeekendMeta">Weekend</div>
+            </div>
+          </div>
+          <div class="title-buttons-right">
+            <div class="button-with-icon bulk-edit-button" id="optimiseSetupButton">
+              <i class="bi bi-magic"></i>
+              <span class="button-text bold-font">Optimise setup</span>
+            </div>
+          </div>
+          <div class="title bold-font">
+            Setup
+          </div>
+        </div>
+        <div class="setup-main">
+          <div class="setup-unavailable" id="setupUnavailable">
+            <i class="bi bi-info-circle"></i>
+            <div>
+              <div class="setup-unavailable-title bold-font">Setup editing is not available</div>
+              <div class="setup-unavailable-text" id="setupUnavailableReason">Load a save at the start of a race weekend before qualifying.</div>
+            </div>
+          </div>
+          <div class="setup-content d-none" id="setupContent">
+            <div class="setup-summary">
+              <div class="setup-summary-item">
+                <span>Team</span>
+                <strong id="setupTeamName">Player team</strong>
+              </div>
+              <div class="setup-summary-item">
+                <span>Action</span>
+                <strong>Copy perfect setup to current setup</strong>
+              </div>
+            </div>
+            <div class="setup-hint">
+              Review each car's current setup against the weekend target before applying the optimum.
+            </div>
+            <div class="setup-cars" id="setupCars"></div>
           </div>
         </div>
       </div>
@@ -4326,7 +4390,7 @@
             <div class="dropdown-global">
               <button class="redesigned-dropdown bold-font" id="attributeButton" aria-haspopup="true"
                 aria-expanded="false">
-                <span class="dropdown-label">Overall</span>
+                <span class="dropdown-label">Aero</span>
                 <i class="redesigned-chevron"></i>
               </button>
               <ul class="redesigned-dropdown-menu" id="attributeMenu" style="font-family: Formula1;">
@@ -4340,7 +4404,7 @@
                 <a class="redesigned-dropdown-item brake-cooling-replace" data-attribute="brake_cooling">Brake
                   cooling</a>
                 <a class="redesigned-dropdown-item" data-attribute="engine_cooling">Engine cooling</a>
-                <a class="redesigned-dropdown-item" data-attribute="overall">Overall</a>
+                <a class="redesigned-dropdown-item" data-attribute="overall">Aero</a>
               </ul>
             </div>
             <div class="button-with-icon" id="teamsCarsButton" data-value="teams">
@@ -4354,6 +4418,18 @@
             <div class="button-with-icon" id="performanceExpertiseButton" data-value="performance">
               <i class="bi bi-speedometer2"></i>
               <span>Performance</span>
+            </div>
+            <div class="performance-bulk-actions">
+              <div class="button-with-icon compact bulk-edit-button performance-bulk-button" id="fittedPartsCountButton"
+                title="Set fitted parts count for every team">
+                <i class="bi bi-box-seam"></i>
+                <span>Set fitted</span>
+              </div>
+              <div class="button-with-icon compact bulk-edit-button performance-bulk-button" id="fitLatestAllTeamsButton"
+                title="Fit latest completed parts for every team">
+                <i class="bi bi-check2-all"></i>
+                <span>Fit latest</span>
+              </div>
             </div>
             <div class="fit-button d-none" id="fitButton">Fit latest designs</div>
           </div>

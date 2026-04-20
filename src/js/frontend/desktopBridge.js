@@ -91,6 +91,13 @@ export async function readDesktopRecentFile(recent) {
   return payloadToFile(payload);
 }
 
+export async function readDesktopSaveFilePath(filePath) {
+  if (!isDesktopApp() || !filePath) return null;
+
+  const payload = await getBridge().readRecentFile(filePath);
+  return payloadToFile(payload);
+}
+
 export async function saveDesktopFile(defaultName, data) {
   if (!isDesktopApp()) return { canceled: true };
 

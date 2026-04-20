@@ -28,9 +28,10 @@ import {
     reload_h2h_graphs, init_colors_dict, edit_colors_dict, setMidGrid, setMaxRaces, setRelativeGrid
 } from './head2head';
 import { load_regulations, gather_regulations_data } from './regulations.js';
+import { initSetupPage, loadSetupPage } from './setup.js';
 import { loadRecordsList, loadTeamRecordsList } from './seasonViewer';
 import { resetStaffIDChanges, updateEditsWithModData } from '../backend/scriptUtils/modUtils.js';
-import { dbWorker, processSaveFile } from './dragFile';
+import { dbWorker, processSaveFile, reloadCurrentSave } from './dragFile';
 import { Command } from "../backend/command.js";
 import { saveAs } from "file-saver";
 import members from "../../data/members.json"
@@ -50,6 +51,7 @@ const regulationsPill = document.getElementById("regulationspill");
 const carPill = document.getElementById("carpill");
 const viewPill = document.getElementById("viewerpill");
 const h2hPill = document.getElementById("h2hpill");
+const setupPill = document.getElementById("setuppill");
 const constructorsPill = document.getElementById("constructorspill")      
 const modPill = document.getElementById("modpill")
 
@@ -64,6 +66,7 @@ const regulationsDiv = document.getElementById("regulations");
 const carPerformanceDiv = document.getElementById("car_performance");
 const viewDiv = document.getElementById("season_viewer");
 const h2hDiv = document.getElementById("head2head_viewer");
+const setupDiv = document.getElementById("setup_viewer");
 const teamsDiv = document.getElementById("edit_teams");
 const seasonModsDiv = document.getElementById("season_mods")
 
@@ -71,9 +74,11 @@ const patchNotesBody = document.getElementById("patchNotesBody")
 const selectImageButton = document.getElementById('selectImage');
 const userToolButton = document.getElementById('userToolButton');
 const saveFileButton = document.getElementById('saveFileButton');
+const reloadSaveButton = document.getElementById('reloadSaveButton');
 
-const scriptsArray = [h2hDiv, viewDiv, driverTransferDiv, editStatsDiv, teamsDiv, customCalendarDiv, regulationsDiv, carPerformanceDiv, seasonModsDiv]
+const scriptsArray = [setupDiv, h2hDiv, viewDiv, driverTransferDiv, editStatsDiv, teamsDiv, customCalendarDiv, regulationsDiv, carPerformanceDiv, seasonModsDiv]
 initSeasonMods();
+initSetupPage();
 
 document.addEventListener("random-staff-requested", function (event) {
     const data = event.detail || {};
@@ -261,6 +266,33 @@ if (saveFileButton && saveFileInput) {
         if (ok) {
             saveFileInput.click();
         }
+    });
+}
+
+if (reloadSaveButton) {
+    const reloadLoadedSave = async () => {
+        if (reloadSaveButton.classList.contains("hidden") || reloadSaveButton.classList.contains("disabled")) return;
+
+        reloadSaveButton.classList.add("disabled");
+        reloadSaveButton.setAttribute("aria-disabled", "true");
+
+        try {
+            await reloadCurrentSave();
+            new_update_notifications("Reloaded current save from disk.", "success");
+        } catch (error) {
+            console.error("Failed to reload current save:", error);
+            new_update_notifications("Could not reload the current save file.", "error");
+        } finally {
+            reloadSaveButton.classList.remove("disabled");
+            reloadSaveButton.setAttribute("aria-disabled", "false");
+        }
+    };
+
+    reloadSaveButton.addEventListener("click", reloadLoadedSave);
+    reloadSaveButton.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        reloadLoadedSave();
     });
 }
 
@@ -1034,6 +1066,9 @@ const messageHandlers = {
         load_cars(message[0])
         load_car_attributes(message[1])
         order_by("overall")
+    },
+    "Setup fetched": (message) => {
+        loadSetupPage(message)
     },
     "Custom Engines fetched": (message) => {
         load_custom_engines(message.slice(1))
@@ -1858,6 +1893,30 @@ h2hPill.addEventListener("click", function () {
     manageSaveButton(false)
 })
 
+setupPill?.addEventListener("click", async function () {
+    manageScripts("show", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide", "hide")
+    scriptSelected = 1
+    check_selected()
+    manageSaveButton(false)
+    try {
+        const response = await new Command("setupRequest", {}).promiseExecute();
+        await updateFront(response);
+    } catch (error) {
+        console.error("Failed to fetch setup data", error);
+        new_update_notifications("Could not fetch setup data.", "error");
+    }
+})
+
+document.addEventListener("optimiseSetupRequested", async function () {
+    try {
+        const response = await new Command("optimiseSetup", {}).promiseExecute();
+        await updateFront(response);
+    } catch (error) {
+        console.error("Failed to optimise setup", error);
+        new_update_notifications("Could not optimise setup.", "error");
+    }
+});
+
 viewPill.addEventListener("click", function () {
     if (!viewerLoaded) {
         viewerLoaded = true
@@ -2111,6 +2170,10 @@ document.querySelectorAll(".one-difficulty .bi-dash").forEach(function (elem) {
  * @param  {Array} divs array of state of the divs
  */
 function manageScripts(...divs) {
+    if (divs.length < scriptsArray.length) {
+        divs = ["hide", ...divs];
+    }
+
     const newIndex = divs.findIndex(s => s === "show");
     const prevIndex = lastVisibleIndex;
 
@@ -2342,7 +2405,7 @@ function populateRecentHandles(recents) {
             await saveHandleToRecents(fileHandle);
             handle.lastOpened = new Date();
             updateTimeLabel();
-            processSaveFile(file);
+            processSaveFile(file, { fileHandle });
 
         });
 

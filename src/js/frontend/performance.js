@@ -11,6 +11,8 @@ import { getEngineLogoSrc } from "./seasonViewer.js";
 
 const teamsPill = document.getElementById("teamsPill");
 const enginesPill = document.getElementById("enginesPill");
+const fittedPartsCountButton = document.getElementById("fittedPartsCountButton");
+const fitLatestAllTeamsButton = document.getElementById("fitLatestAllTeamsButton");
 
 const teamsDiv = document.getElementById("teamsDiv");
 const enginesDiv = document.getElementById("enginesDiv");
@@ -453,8 +455,8 @@ function setupTeamOverallButtons() {
 
         const button = document.createElement("div");
         button.className = "button-with-icon compact bulk-edit-button team-overall-button";
-        button.title = "Set overall performance";
-        button.innerHTML = `<i class="bi bi-speedometer2"></i><span>Overall</span>`;
+        button.title = "Set aerodynamic performance";
+        button.innerHTML = `<i class="bi bi-speedometer2"></i><span>Aero</span>`;
 
         button.addEventListener("click", async function (event) {
             event.preventDefault();
@@ -464,13 +466,13 @@ function setupTeamOverallButtons() {
             const currentOverall = teamElem.querySelector(".performance-bar-progress")?.dataset?.overall || "85";
             const currentOverallValue = Number(currentOverall);
             const answer = await showNumberPrompt({
-                title: "Set overall performance",
+                title: "Set aerodynamic performance",
                 label: teamName,
                 defaultValue: Number.isFinite(currentOverallValue) ? currentOverallValue.toFixed(2) : "85",
                 min: 0,
                 max: 100,
                 step: 0.01,
-                description: "Use the arrows to fine-tune by 0.01, or type a value."
+                description: "Sets car-part main stats only. Engine power, durability, ERS, gearbox, and lifespan effects are ignored."
             });
             if (answer === null) return;
 
@@ -493,6 +495,50 @@ function setupTeamOverallButtons() {
 }
 
 setupTeamOverallButtons();
+
+if (fittedPartsCountButton) {
+    fittedPartsCountButton.addEventListener("click", async function () {
+        const answer = await showNumberPrompt({
+            title: "Set fitted parts count",
+            label: "Parts per fitted design",
+            defaultValue: "2",
+            min: 2,
+            max: 99,
+            step: 1,
+            description: "Sets the built item count for every design currently fitted to a car across all teams."
+        });
+        if (answer === null) return;
+
+        const count = Number.parseInt(String(answer).trim(), 10);
+        if (!Number.isFinite(count) || count < 2 || count > 99) {
+            new_update_notifications("Enter a fitted parts count from 2 to 99.", "error");
+            return;
+        }
+
+        const command = new Command("setAllFittedPartsCount", {
+            count,
+            selectedTeamID: teamSelected
+        });
+        command.execute();
+    });
+}
+
+if (fitLatestAllTeamsButton) {
+    fitLatestAllTeamsButton.addEventListener("click", async function () {
+        const ok = await confirmModal({
+            title: "Fit latest parts for every team",
+            body: "This will fit each team's latest completed car parts to both cars. New physical parts will be created when a team does not have enough available items.",
+            confirmText: "Fit latest",
+            cancelText: "Cancel"
+        });
+        if (!ok) return;
+
+        const command = new Command("fitLatestPartsAllTeams", {
+            selectedTeamID: teamSelected
+        });
+        command.execute();
+    });
+}
 
 /**
  * eventListeners for all teams and engines

@@ -17,7 +17,7 @@ import { getPerformanceAllTeamsSeason, getAttributesAllTeams, getPerformanceAllC
 import { setDatabase, getMetadata, getDatabase } from "./dbManager";
 import { fetchHead2Head, fetchHead2HeadTeam } from "./scriptUtils/head2head";
 import { editTeam, fetchTeamData } from "./scriptUtils/editTeamUtils";
-import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise, setOverallPerformanceTeam } from "./scriptUtils/carAnalysisUtils";
+import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise, setOverallPerformanceTeam, setFittedPartsCountAllTeams, fitLatestPartsAllTeams as fitLatestPartsAllTeamsForGrid } from "./scriptUtils/carAnalysisUtils";
 import { setGlobals, getGlobals } from "./commandGlobals";
 import { editAge, editMarketability, editName, editRetirement, editSuperlicense, editCode, editMentality, editStats, setAllDriversStatsTo85, setMainStatsForStaff } from "./scriptUtils/eidtStatsUtils";
 import { editCalendar, fetchCalendar } from "./scriptUtils/calendarUtils";
@@ -41,9 +41,47 @@ import { analyzeFileToDatabase, repack } from "./UESaveHandler";
 import { fetchRegulationsData, updateRegulations } from "./scriptUtils/regulationsUtils.js";
 import { cleanupBrokenInboxMessages, deleteProblematicTriggers } from "./scriptUtils/triggerUtils.js";
 import { fetchCountryLocaleForCode, fetchRandomDraftForename, fetchRandomStaffDraft } from "./scriptUtils/createStaffUtils.js";
+import { fetchCurrentWeekendSetup, optimiseCurrentWeekendSetup } from "./scriptUtils/setupUtils.js";
 
 import initSqlJs from 'sql.js';
 import { combined_dict } from "../frontend/config";
+
+function hasCustomTeam(yearData) {
+  return yearData?.[1] !== null && yearData?.[1] !== undefined;
+}
+
+function postPerformanceRefresh(postMessage, yearData, selectedTeamId = null, flags = {}, customTeam = hasCustomTeam(yearData)) {
+  const [performance, races] = getPerformanceAllTeamsSeason(customTeam, { useHistoricalEnginePower: true });
+  const engineUpgradeRaceIds = getEngineEditRaceIds();
+  postMessage({
+    responseMessage: "Season performance fetched",
+    content: [performance, races, engineUpgradeRaceIds],
+    noti_msg: flags.noti_msg
+  });
+
+  const attributes = getAttributesAllTeams(customTeam);
+  postMessage({ responseMessage: "Performance fetched", content: [performance[performance.length - 1], attributes] });
+
+  const carPerformance = getPerformanceAllCars(customTeam);
+  const carAttributes = getAttributesAllCars(customTeam);
+  postMessage({
+    responseMessage: "Cars fetched",
+    content: [carPerformance, carAttributes],
+    isEditCommand: flags.isEditCommand,
+    unlocksDownload: flags.unlocksDownload
+  });
+
+  const teamId = Number(selectedTeamId);
+  if (Number.isFinite(teamId) && teamId > 0) {
+    const globals = getGlobals();
+    const designDict = getPartsFromTeam(teamId);
+    const unitValues = getUnitValueFromParts(designDict);
+    const allParts = getAllPartsFromTeam(teamId);
+    const maxDesign = getMaxDesign();
+    const expertise = getTeamExpertise(teamId, globals.yearIteration);
+    postMessage({ responseMessage: "Parts stats fetched", content: [unitValues, allParts, maxDesign, expertise] });
+  }
+}
 
 // Diccionario de comandos
 const workerCommands = {
@@ -162,6 +200,8 @@ const workerCommands = {
     const carPerformance = getPerformanceAllCars(yearData[2]);
     const carAttributes = getAttributesAllCars(yearData[2]);
     postMessage({ responseMessage: "Cars fetched", content: [carPerformance, carAttributes] });
+
+    postMessage({ responseMessage: "Setup fetched", content: fetchCurrentWeekendSetup() });
 
     const mod2026Data = fetch2026ModData();
     const mod2025Data = fetch2025ModData();
@@ -308,6 +348,19 @@ const workerCommands = {
   partRequest: (data, postMessage) => {
     const partValues = getUnitValueFromOnePart(data.designID);
     postMessage({ responseMessage: "Part values fetched", content: partValues });
+  },
+  setupRequest: (data, postMessage) => {
+    postMessage({ responseMessage: "Setup fetched", content: fetchCurrentWeekendSetup() });
+  },
+  optimiseSetup: (data, postMessage) => {
+    const result = optimiseCurrentWeekendSetup();
+    postMessage({
+      responseMessage: "Setup fetched",
+      content: result.setup,
+      noti_msg: result.ok ? `Optimised setup for ${result.updated} car${result.updated === 1 ? "" : "s"}` : undefined,
+      unlocksDownload: result.ok ? true : undefined,
+      isEditCommand: result.ok
+    });
   },
   editTeam: (data, postMessage) => {
     editTeam(data);
@@ -460,7 +513,7 @@ const workerCommands = {
     postMessage({
       responseMessage: "Season performance fetched",
       content: [performance, races, engineUpgradeRaceIds],
-      noti_msg: `Set ${teamReplaceDict[data.teamName] || data.teamName}'s target performance to ${requestedOverall}% (${projectedOverall}% projected)`
+      noti_msg: `Set ${teamReplaceDict[data.teamName] || data.teamName}'s aero score to ${requestedOverall}% (${projectedOverall}% applied)`
     });
 
     const attributes = getAttributesAllTeams(yearData[2]);
@@ -481,6 +534,31 @@ const workerCommands = {
     const maxDesign = getMaxDesign();
     const expertise = getTeamExpertise(data.teamID, globals.yearIteration);
     postMessage({ responseMessage: "Parts stats fetched", content: [unitValues, allParts, maxDesign, expertise] });
+  },
+  setAllFittedPartsCount: (data, postMessage) => {
+    const yearData = checkYearSave();
+    const customTeam = hasCustomTeam(yearData);
+    const result = setFittedPartsCountAllTeams(data.count, customTeam);
+    const count = Number(result.requestedCount);
+    const minimumNote = result.minimumAdjustedDesigns > 0
+      ? ` (${result.minimumAdjustedDesigns} fitted designs kept above ${count} to avoid breaking fitted cars)`
+      : "";
+
+    postPerformanceRefresh(postMessage, yearData, data.selectedTeamID, {
+      noti_msg: `Set fitted part counts to ${count} across ${result.updatedDesigns} designs${minimumNote}`,
+      isEditCommand: true,
+      unlocksDownload: true
+    }, customTeam);
+  },
+  fitLatestPartsAllTeams: (data, postMessage) => {
+    const yearData = checkYearSave();
+    const customTeam = hasCustomTeam(yearData);
+    const result = fitLatestPartsAllTeamsForGrid(customTeam);
+    postPerformanceRefresh(postMessage, yearData, data.selectedTeamID, {
+      noti_msg: `Fitted latest completed parts across the grid (${result.updatedLoadouts} loadouts updated)`,
+      isEditCommand: true,
+      unlocksDownload: true
+    }, customTeam);
   },
   editEngine: (data, postMessage) => {
     snapshotEnginePowerProgression(Object.keys(data?.engines || {}), 'pre_engine_edit');

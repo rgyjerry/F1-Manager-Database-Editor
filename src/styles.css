@@ -1721,6 +1721,16 @@ body.og-theme .dropdown-menu a:hover {
   background-color: var(--new-primary-transparent);
 }
 
+.performance-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.performance-bulk-button {
+  white-space: nowrap;
+}
+
 .attributes-title-actions {
   display: flex;
   align-items: center;
@@ -3087,6 +3097,7 @@ body.mclaren-theme .background {
 
 .script-selector.hidden,
 .gear-container.hidden,
+.reload-container.hidden,
 .footer.hidden {
   opacity: 0;
   pointer-events: none;
@@ -3099,7 +3110,9 @@ body.mclaren-theme .background {
   gap: 10px;
 }
 
-.gear-container {
+.gear-container,
+.reload-container {
+  display: flex;
   font-size: 16px;
   width: 0px;
   height: 40px;
@@ -3110,9 +3123,12 @@ body.mclaren-theme .background {
   cursor: pointer;
   border-top: 2px solid transparent;
   border-bottom: 2px solid transparent;
+  flex: 0 0 auto;
+  overflow: hidden;
 }
 
-.gear-container::before {
+.gear-container::before,
+.reload-container::before {
   content: '';
   position: absolute;
   top: 0;
@@ -3126,11 +3142,13 @@ body.mclaren-theme .background {
   pointer-events: none;
 }
 
-.gear-container:hover::before {
+.gear-container:hover::before,
+.reload-container:hover::before {
   opacity: 1;
 }
 
-.gear-container:not(:hover)::before {
+.gear-container:not(:hover)::before,
+.reload-container:not(:hover)::before {
   transition-delay: 0s;
 }
 
@@ -3138,20 +3156,31 @@ body.mclaren-theme .background {
   width: 40px;
 }
 
-.gear-container:hover .bi-gear-fill {
+.reload-container:not(.hidden) {
+  width: 40px;
+}
+
+.reload-container.disabled {
+  cursor: progress;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.gear-container:hover .bi-gear-fill,
+.reload-container:hover .bi-arrow-clockwise,
+.reload-container.disabled .bi-arrow-clockwise {
   opacity: 0;
 }
 
 .gear-container:hover .standard-line,
-.gear-container:hover {
+.gear-container:hover,
+.reload-container:hover .standard-line,
+.reload-container:hover {
   width: 117px;
 }
 
-.gear-container .standard-label {
-  width: 160px;
-}
-
-.gear-container:hover .standard-label {
+.gear-container:hover .standard-label,
+.reload-container:hover .standard-label {
   opacity: 1;
 }
 
@@ -3160,25 +3189,94 @@ body.mclaren-theme .background {
   opacity: 0;
   transition: opacity 0.10s;
   position: absolute;
-  left: 8px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   cursor: pointer;
   pointer-events: none;
-  bottom: 7px;
+  white-space: nowrap;
 }
 
-.gear-container .bi-gear-fill {
+.gear-container .bi-gear-fill,
+.reload-container .bi-arrow-clockwise {
   color: var(--text-general);
   opacity: 1;
   transition: color 0.15s, opacity 0.1s;
-  left: 10px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   font-size: 20px;
   position: absolute;
-  bottom: 5px;
 }
 
-.gear-container .bi-gear-fill.hidden {
+.gear-container .bi-gear-fill.hidden,
+.reload-container.hidden .bi-arrow-clockwise {
   opacity: 0;
   pointer-events: none;
+}
+
+.reload-save-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.15s ease;
+}
+
+.reload-save-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reload-save-card {
+  width: min(300px, calc(100vw - 48px));
+  min-height: 132px;
+  padding: 24px 22px;
+  border: 1px solid var(--text-general);
+  border-radius: 8px;
+  background-color: var(--custom-modal-back);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+  color: var(--modal-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.reload-save-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--text-general);
+  border-radius: 50%;
+  animation: reload-save-spin 0.75s linear infinite;
+}
+
+.reload-save-title {
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--modal-text);
+}
+
+.reload-save-text {
+  max-width: 240px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text-general);
+}
+
+@keyframes reload-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .gear-container.bi-gear-fill:hover .standard-line {
@@ -3599,6 +3697,7 @@ body.og-theme .main-calendar-section {
 
 #predict_results,
 #edit_stats,
+#setup_viewer,
 #car_performance,
 #driver_transfers,
 #regulations,
@@ -3607,6 +3706,207 @@ body.og-theme .main-calendar-section {
 #car_performance,
 #season_mods {
   flex-direction: column;
+}
+
+#setup_viewer {
+  gap: 18px;
+}
+
+.setup-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+}
+
+.setup-main:has(.setup-unavailable:not(.d-none)) {
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 12vh;
+}
+
+.setup-track-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 180px;
+}
+
+.setup-track-name {
+  color: var(--white-general);
+  font-size: 18px;
+}
+
+.setup-weekend-meta,
+.setup-unavailable-text,
+.setup-hint,
+.setup-summary-item span,
+.setup-car-driver,
+.setup-confidence span {
+  color: var(--text-secondary);
+}
+
+.setup-unavailable {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  padding: 18px;
+  border: 1px solid var(--separator);
+  background-color: var(--elements);
+  border-radius: 8px;
+  box-shadow: var(--shadow-s);
+}
+
+.setup-unavailable i {
+  color: var(--new-primary);
+  font-size: 24px;
+}
+
+.setup-unavailable-title {
+  color: var(--white-general);
+  margin-bottom: 4px;
+}
+
+.setup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.setup-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--separator);
+  background-color: var(--elements);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.setup-summary-item strong {
+  color: var(--white-general);
+  overflow-wrap: anywhere;
+}
+
+.setup-hint {
+  padding: 0 2px;
+}
+
+.setup-cars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.setup-car {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--separator);
+  background-color: var(--elements);
+  border-radius: 8px;
+  box-shadow: var(--shadow-s);
+  min-width: 0;
+}
+
+.setup-car-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.setup-car-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.setup-car-number {
+  color: var(--white-general);
+  font-size: 18px;
+}
+
+.setup-car-driver {
+  overflow-wrap: anywhere;
+}
+
+.setup-confidence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.setup-confidence strong,
+.setup-perfect-value {
+  color: var(--new-primary);
+}
+
+.setup-values {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-value-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(130px, 1.5fr) minmax(110px, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+}
+
+.setup-value-label {
+  color: var(--text-general);
+}
+
+.setup-value-bar {
+  height: 7px;
+  border-radius: 5px;
+  background-color: var(--separator);
+  overflow: hidden;
+}
+
+.setup-value-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background-color: var(--new-primary);
+  transition: width 0.15s;
+}
+
+.setup-value-numbers {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+#optimiseSetupButton.disabled {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+@media (max-width: 1100px) {
+  .setup-cars,
+  .setup-summary {
+    grid-template-columns: 1fr;
+  }
 }
 
 #regulations .main-viewer-section.points-and-cfd{
@@ -10415,10 +10715,20 @@ body.og-theme .records-list {
   width: 44px;
   height: 40px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   background: none;
+  overflow: hidden;
 }
 
+
+#setuppill:hover,
+#setuppill:hover .pill-line,
+#setuppill.active .pill-line,
+#setuppill.active {
+  width: 98px;
+}
 
 #predictpill:hover,
 #predictpill:hover .pill-line,
@@ -10494,7 +10804,7 @@ body.og-theme .records-list {
 #specialCarIcon {
   width: 20px;
   height: 20px;
-  bottom: 8px;
+  bottom: auto;
   -webkit-mask: url('/assets/images/car.svg') no-repeat center;
   mask: url('/assets/images/car.svg') no-repeat center;
   -webkit-mask-size: contain;
@@ -10610,16 +10920,21 @@ body.og-theme .records-list {
   transition: opacity 0.10s;
   font-size: 20px;
   position: absolute;
-  bottom: 5px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .pill-label {
   opacity: 0;
   transition: opacity 0.10s;
   position: absolute;
-  left: 10px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   cursor: pointer;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .pill-line {
