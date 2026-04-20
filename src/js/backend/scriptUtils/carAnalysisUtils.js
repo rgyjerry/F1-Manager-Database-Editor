@@ -1145,12 +1145,17 @@ function getBuiltPartCount(designId, partType) {
 
 function getRemovablePartItems(designId, partType) {
     return queryDB(`
-        SELECT ItemID
-        FROM Parts_Items
-        WHERE DesignID = ?
-          AND BuildWork = ?
-          AND AssociatedCar IS NULL
-        ORDER BY ItemID DESC
+        SELECT pi.ItemID
+        FROM Parts_Items pi
+        WHERE pi.DesignID = ?
+          AND pi.BuildWork = ?
+          AND pi.AssociatedCar IS NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM Parts_CarLoadout pcl
+              WHERE pcl.ItemID = pi.ItemID
+          )
+        ORDER BY pi.ItemID DESC
     `, [designId, carConstants.standardBuildworkPerPart[partType]], "allRows") || [];
 }
 
@@ -1299,18 +1304,43 @@ function releaseLoadoutItem(teamId, partType, loadoutId) {
     `, [remainingLoadoutId, remainingLoadoutId, itemId], "run");
 }
 
-function getAvailableItemForDesign(designId, partType) {
-    const row = queryDB(`
-        SELECT ItemID
-        FROM Parts_Items
-        WHERE DesignID = ?
-          AND BuildWork = ?
-          AND AssociatedCar IS NULL
-        ORDER BY ItemID ASC
-        LIMIT 1
-    `, [designId, carConstants.standardBuildworkPerPart[partType]], "singleRow");
+function getAvailableItemForDesign(designId, partType, excludedItemIds = new Set()) {
+    const rows = queryDB(`
+        SELECT pi.ItemID
+        FROM Parts_Items pi
+        WHERE pi.DesignID = ?
+          AND pi.BuildWork = ?
+          AND pi.AssociatedCar IS NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM Parts_CarLoadout pcl
+              WHERE pcl.ItemID = pi.ItemID
+          )
+        ORDER BY pi.ItemID ASC
+    `, [designId, carConstants.standardBuildworkPerPart[partType]], "allRows") || [];
 
-    return toFiniteNumberOrNull(row?.[0]);
+    for (const row of rows) {
+        const itemId = toFiniteNumberOrNull(row?.[0]);
+        if (itemId !== null && !excludedItemIds.has(itemId)) {
+            return itemId;
+        }
+    }
+
+    return null;
+}
+
+function isItemValidForDesign(itemId, designId, partType) {
+    if (itemId === null) return false;
+
+    const itemCount = Number(queryDB(`
+        SELECT COUNT(*)
+        FROM Parts_Items
+        WHERE ItemID = ?
+          AND DesignID = ?
+          AND BuildWork = ?
+    `, [itemId, designId, carConstants.standardBuildworkPerPart[partType]], "singleValue")) || 0;
+
+    return itemCount > 0;
 }
 
 function fitDesignToLoadout(teamId, partType, loadoutId, designId) {
@@ -1324,7 +1354,8 @@ function fitDesignToLoadout(teamId, partType, loadoutId, designId) {
 
     const currentDesignId = toFiniteNumberOrNull(current?.[0]);
     const currentItemId = toFiniteNumberOrNull(current?.[1]);
-    let needsNewItem = currentDesignId !== Number(designId) || !Number.isFinite(currentItemId);
+    let needsNewItem = currentDesignId !== Number(designId) || currentItemId === null
+        || !isItemValidForDesign(currentItemId, designId, partType);
 
     if (!needsNewItem) {
         const itemUses = Number(queryDB(`
@@ -1355,6 +1386,111 @@ function fitDesignToLoadout(teamId, partType, loadoutId, designId) {
 
     addPartToLoadout(designId, partType, teamId, loadoutId, itemId);
     return { changed: true, created };
+}
+
+function freeUnreferencedAssociatedCarPartItems() {
+    const rows = queryDB(`
+        SELECT pi.ItemID
+        FROM Parts_Items pi
+        INNER JOIN Parts_Designs pd ON pd.DesignID = pi.DesignID
+        WHERE pd.PartType BETWEEN 3 AND 8
+          AND pi.AssociatedCar IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM Parts_CarLoadout pcl
+              WHERE pcl.ItemID = pi.ItemID
+          )
+    `, [], "allRows") || [];
+
+    for (const row of rows) {
+        queryDB(`
+            UPDATE Parts_Items
+            SET AssociatedCar = NULL
+            WHERE ItemID = ?
+        `, [row[0]], "run");
+    }
+
+    return rows.length;
+}
+
+export function repairCarLoadoutItemAssociations() {
+    const rows = queryDB(`
+        SELECT TeamID, PartType, LoadoutID, DesignID, ItemID
+        FROM Parts_CarLoadout
+        WHERE PartType BETWEEN 3 AND 8
+          AND LoadoutID IN (1, 2)
+        ORDER BY TeamID ASC, PartType ASC, LoadoutID ASC
+    `, [], "allRows") || [];
+
+    const usedItemIds = new Set();
+    let updatedLoadouts = 0;
+    let fixedAssociations = 0;
+    let createdItems = 0;
+
+    for (const row of rows) {
+        const teamId = toFiniteNumberOrNull(row[0]);
+        const partType = toFiniteNumberOrNull(row[1]);
+        const loadoutId = toFiniteNumberOrNull(row[2]);
+        const designId = toFiniteNumberOrNull(row[3]);
+        const itemId = toFiniteNumberOrNull(row[4]);
+
+        if (teamId === null || partType === null || loadoutId === null || designId === null) {
+            continue;
+        }
+
+        const itemIsValid = isItemValidForDesign(itemId, designId, partType);
+        const itemAlreadyUsed = itemId !== null && usedItemIds.has(itemId);
+
+        if (!itemIsValid || itemAlreadyUsed) {
+            if (itemId !== null) {
+                releaseLoadoutItem(teamId, partType, loadoutId);
+            }
+
+            const excludedItemIds = new Set(usedItemIds);
+            if (itemId !== null) {
+                excludedItemIds.add(itemId);
+            }
+
+            let replacementItemId = getAvailableItemForDesign(designId, partType, excludedItemIds);
+            if (replacementItemId === null) {
+                replacementItemId = createNewItem(designId, partType);
+                createdItems += 1;
+            }
+
+            addPartToLoadout(designId, partType, teamId, loadoutId, replacementItemId);
+            usedItemIds.add(replacementItemId);
+            updatedLoadouts += 1;
+            continue;
+        }
+
+        usedItemIds.add(itemId);
+
+        const association = queryDB(`
+            SELECT AssociatedCar, LastEquippedCar
+            FROM Parts_Items
+            WHERE ItemID = ?
+        `, [itemId], "singleRow");
+
+        if (toFiniteNumberOrNull(association?.[0]) !== loadoutId) {
+            queryDB(`
+                UPDATE Parts_Items
+                SET AssociatedCar = ?, LastEquippedCar = ?
+                WHERE ItemID = ?
+            `, [loadoutId, loadoutId, itemId], "run");
+            fixedAssociations += 1;
+        }
+    }
+
+    const freedItems = freeUnreferencedAssociatedCarPartItems();
+    const totalChanges = updatedLoadouts + fixedAssociations + freedItems;
+
+    return {
+        updatedLoadouts,
+        fixedAssociations,
+        createdItems,
+        freedItems,
+        totalChanges
+    };
 }
 
 export function fitLatestPartsAllTeams(customTeam = false) {
@@ -1403,66 +1539,9 @@ export function fitLatestDesignsOneTeam(teamId, parts) {
             const part = Number(partKey);
             if (part !== 0) {
                 // En Python, parts[part] = [[designId], ...], asumiendo la estructura
-                const design = parts[part][0][0]; // -> designID
-                // fitted_design actual
-                const fittedRow = queryDB(`
-                        SELECT DesignID 
-                        FROM Parts_CarLoadout
-                        WHERE TeamID = ?
-                        AND PartType = ?
-                        AND LoadoutID = ?
-                    `, [teamId, part, loadout], "singleRow");
-
-                if (!fittedRow) {
-                    console.warn(`No fittedRow found for TeamID=${teamId}, part=${part}, loadout=${loadout}`);
-                    continue;
-                }
-                const fittedDesign = fittedRow[0];
-
-                if (design !== fittedDesign) {
-                    // Buscamos items disponibles
-                    const partsAvailable = queryDB(`
-                        SELECT ItemID
-                        FROM Parts_Items
-                        WHERE DesignID = ?
-                            AND AssociatedCar IS NULL
-                        `, [design], "allRows");
-
-                    if (!partsAvailable.length) {
-                        // no hay items disponibles => creamos uno nuevo
-                        const item = createNewItem(design, part);
-                        addPartToLoadout(design, part, teamId, loadout, item);
-                    } else {
-                        const item = partsAvailable[0][0]; // primer item
-                        addPartToLoadout(design, part, teamId, loadout, item);
-                    }
-                } else {
-                    // design ya está equipado en este loadout
-                    // Miramos si loadout 1 y 2 comparten item
-                    const otherLoadout = (loadout === 2) ? 1 : 2;
-
-                    const fittedItemOther = queryDB(`
-                        SELECT ItemID 
-                        FROM Parts_CarLoadout
-                        WHERE TeamID = ?
-                            AND PartType = ?
-                            AND LoadoutID = ?
-                        `, [teamId, part, otherLoadout], "singleRow");
-
-                    const fittedItem = queryDB(`
-                        SELECT ItemID 
-                        FROM Parts_CarLoadout
-                        WHERE TeamID = ?
-                            AND PartType = ?
-                            AND LoadoutID = ?
-                        `, [teamId, part, loadout], "singleRow");
-
-                    if (fittedItemOther && fittedItem
-                        && fittedItemOther[0] === fittedItem[0]) {
-                        // Ambos loadouts tienen el mismo item => creamos uno nuevo
-                        const item = createNewItem(design, part);
-                        addPartToLoadout(design, part, teamId, loadout, item);
-                    }
+                const design = toFiniteNumberOrNull(parts[part]?.[0]?.[0]); // -> designID
+                if (design !== null) {
+                    fitDesignToLoadout(teamId, part, loadout, design);
                 }
             }
         }
@@ -1516,88 +1595,12 @@ export function fitLoadoutsDict(loadoutsDict, teamId) {
         const design1 = loadoutsDict[part][0];
         const design2 = loadoutsDict[part][1];
 
-        // SELECT DesignID, ItemID FROM Parts_CarLoadout ...
-        let fittedDesign1 = queryDB(`
-                SELECT DesignID, ItemID
-                FROM Parts_CarLoadout
-                WHERE TeamID = ?
-                AND PartType = ?
-                AND LoadoutID = 1
-            `, [teamId, part], "singleRow");
-
         if (design1 != null) {
-            if (fittedDesign1 && fittedDesign1[0] != null && fittedDesign1[1] != null) {
-                // "UPDATE Parts_Items SET AssociatedCar = NULL WHERE ItemID = ?"
-                const itemId = fittedDesign1[1];
-                queryDB(`
-                        UPDATE Parts_Items
-                        SET AssociatedCar = NULL
-                        WHERE ItemID = ?
-                    `, [itemId], 'run');
-                // fittedDesign1 = fittedDesign1[0]
-                fittedDesign1 = [fittedDesign1[0], itemId]; // si necesitas retenerlo
-            }
-
-            // Si la design1 actual es distinta...
-            if (!fittedDesign1 || fittedDesign1[0] !== design1) {
-                // SELECT ItemID FROM Parts_Items WHERE ...
-                const items1 = queryDB(`
-                        SELECT ItemID
-                        FROM Parts_Items
-                        WHERE DesignID = ?
-                        AND BuildWork = ?
-                        AND AssociatedCar IS NULL
-                    `, [design1, carConstants.standardBuildworkPerPart[part]], "allRows");
-
-                let item1;
-                if (!items1.length) {
-                    item1 = createNewItem(design1, part);
-                } else {
-                    item1 = items1[0][0];
-                }
-
-                addPartToLoadout(design1, part, teamId, 1, item1);
-            }
+            fitDesignToLoadout(teamId, part, 1, design1);
         }
 
-        // Ahora loadout 2
-        let fittedDesign2 = queryDB(`
-                SELECT DesignID, ItemID
-                FROM Parts_CarLoadout
-                WHERE TeamID = ?
-                AND PartType = ?
-                AND LoadoutID = 2
-            `, [teamId, part], "singleRow");
-
         if (design2 != null) {
-            if (fittedDesign2 && fittedDesign2[0] != null && fittedDesign2[1] != null) {
-                const itemId2 = fittedDesign2[1];
-                queryDB(`
-                        UPDATE Parts_Items
-                        SET AssociatedCar = NULL
-                        WHERE ItemID = ?
-                    `, [itemId2], 'run');
-                fittedDesign2 = [fittedDesign2[0], itemId2];
-            }
-
-            if (!fittedDesign2 || fittedDesign2[0] !== design2) {
-                const items2 = queryDB(`
-                        SELECT ItemID
-                        FROM Parts_Items
-                        WHERE DesignID = ?
-                        AND BuildWork = ?
-                        AND AssociatedCar IS NULL
-                    `, [design2, carConstants.standardBuildworkPerPart[part]], "allRows");
-
-                let item2;
-                if (!items2.length) {
-                    item2 = createNewItem(design2, part);
-                } else {
-                    item2 = items2[0][0];
-                }
-
-                addPartToLoadout(design2, part, teamId, 2, item2);
-            }
+            fitDesignToLoadout(teamId, part, 2, design2);
         }
     }
 
@@ -1654,18 +1657,32 @@ export function deleteItem(designId) {
       WHERE DesignID = ?
     `, [designId], "singleValue");
 
-    // SELECT ItemID FROM Parts_Items WHERE DesignID = {designId} AND BuildWork = ...
+    // Only remove spare items. Deleting fitted items leaves car loadouts pointing at missing parts.
     const item = queryDB(`
-      SELECT ItemID
-      FROM Parts_Items
-      WHERE DesignID = ?
-        AND BuildWork = ?
+      SELECT pi.ItemID
+      FROM Parts_Items pi
+      WHERE pi.DesignID = ?
+        AND pi.BuildWork = ?
+        AND pi.AssociatedCar IS NULL
+        AND NOT EXISTS (
+            SELECT 1
+            FROM Parts_CarLoadout pcl
+            WHERE pcl.ItemID = pi.ItemID
+        )
+      ORDER BY pi.ItemID DESC
+      LIMIT 1
     `, [designId, carConstants.standardBuildworkPerPart[partType]], "singleValue");
+
+    if (item == null) {
+        return false;
+    }
 
     queryDB(`
       DELETE FROM Parts_Items
       WHERE ItemID = ?
     `, [item], 'run');
+
+    return true;
 }
 
 export function addNewDesign(part, teamId, day, season, latestDesignPartFromTeam, newDesignId) {

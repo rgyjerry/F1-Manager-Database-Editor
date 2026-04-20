@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.18 - 2026-04-20
+
+### Fixed
+
+- Repaired car-part loadout item links on load/export and prevented performance edits from detaching fitted items without reassigning them, fixing cases where car 2 could fail to install a replacement part in-game after a part failure.
+
 ## 3.5.10-local.17 - 2026-04-20
 
 ### Changed

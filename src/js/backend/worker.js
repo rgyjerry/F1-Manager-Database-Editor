@@ -17,7 +17,7 @@ import { getPerformanceAllTeamsSeason, getAttributesAllTeams, getPerformanceAllC
 import { setDatabase, getMetadata, getDatabase } from "./dbManager";
 import { fetchHead2Head, fetchHead2HeadTeam } from "./scriptUtils/head2head";
 import { editTeam, fetchTeamData } from "./scriptUtils/editTeamUtils";
-import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise, setOverallPerformanceTeam, setFittedPartsCountAllTeams, fitLatestPartsAllTeams as fitLatestPartsAllTeamsForGrid } from "./scriptUtils/carAnalysisUtils";
+import { overwritePerformanceTeam, updateItemsForDesignDict, fitLoadoutsDict, getPartsFromTeam, getUnitValueFromParts, getAllPartsFromTeam, getMaxDesign, getUnitValueFromOnePart, deleteCustomEngineAndReassign, getTeamExpertise, updateTeamExpertise, setOverallPerformanceTeam, setFittedPartsCountAllTeams, fitLatestPartsAllTeams as fitLatestPartsAllTeamsForGrid, repairCarLoadoutItemAssociations } from "./scriptUtils/carAnalysisUtils";
 import { setGlobals, getGlobals } from "./commandGlobals";
 import { editAge, editMarketability, editName, editRetirement, editSuperlicense, editCode, editMentality, editStats, setAllDriversStatsTo85, setMainStatsForStaff } from "./scriptUtils/eidtStatsUtils";
 import { editCalendar, fetchCalendar } from "./scriptUtils/calendarUtils";
@@ -83,6 +83,13 @@ function postPerformanceRefresh(postMessage, yearData, selectedTeamId = null, fl
   }
 }
 
+function formatCarLoadoutRepairNotice(result) {
+  const changes = Number(result?.totalChanges) || 0;
+  const created = Number(result?.createdItems) || 0;
+  const createdText = created > 0 ? ` and created ${created} replacement item${created === 1 ? "" : "s"}` : "";
+  return `Repaired ${changes} car-part loadout link${changes === 1 ? "" : "s"}${createdText}`;
+}
+
 // Diccionario de comandos
 const workerCommands = {
   loadDB: async (data, postMessage) => {
@@ -104,6 +111,7 @@ const workerCommands = {
     postMessage({ responseMessage: "Database loaded", content: date });
   },
   exportSave: async (data, postMessage) => {
+    repairCarLoadoutItemAssociations();
     cleanupBrokenInboxMessages();
 
     const db = getDatabase();
@@ -115,6 +123,7 @@ const workerCommands = {
   },
   panicDownload: async (data, postMessage) => {
     deleteProblematicTriggers();
+    repairCarLoadoutItemAssociations();
     cleanupBrokenInboxMessages();
 
     const db = getDatabase();
@@ -161,8 +170,19 @@ const workerCommands = {
 
     CONTRACT_PLACEHOLDERS_24.endSeason = Number(yearData[0]) + 1;
 
+    const repairResult = repairCarLoadoutItemAssociations(hasCustomTeam(yearData));
+
     const drivers = fetchDrivers(yearData[0]);
     postMessage({ responseMessage: "Save loaded succesfully", content: drivers, noti_msg: "Save loaded succesfully" });
+
+    if (repairResult.totalChanges > 0) {
+      postMessage({
+        responseMessage: "Car loadouts repaired",
+        noti_msg: formatCarLoadoutRepairNotice(repairResult),
+        isEditCommand: true,
+        unlocksDownload: true
+      });
+    }
 
     const staff = fetchStaff(yearData[0]);
     postMessage({ responseMessage: "Staff fetched", content: staff });
@@ -478,9 +498,11 @@ const workerCommands = {
 
     const yearData = checkYearSave();
 
+    repairCarLoadoutItemAssociations(globals.isCreateATeam);
     overwritePerformanceTeam(data.teamID, data.parts, globals.isCreateATeam, globals.yearIteration, data.loadouts);
     updateItemsForDesignDict(data.n_parts_designs, data.teamID)
     fitLoadoutsDict(data.loadouts, data.teamID)
+    repairCarLoadoutItemAssociations(globals.isCreateATeam);
 
     const [performance, races] = getPerformanceAllTeamsSeason(yearData[2], { useHistoricalEnginePower: true });
     const engineUpgradeRaceIds = getEngineEditRaceIds();
