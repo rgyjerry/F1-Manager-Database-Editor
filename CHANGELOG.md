@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.19 - 2026-05-08
+
+### Fixed
+
+- Updated Comparison race-form charts to plot DNFs on a dedicated bottom-axis `DNF` value so DNF weekends keep a continuous line instead of creating line breaks.
+
 ## 3.5.10-local.18 - 2026-04-20
 
 ### Fixed

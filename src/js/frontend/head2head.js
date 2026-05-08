@@ -37,6 +37,7 @@ let graphTeamList = []
 let mode = "driver"
 let h2hData;
 let queuedAutoCompareDrivers = null;
+let raceGraphMaxPosition = 20;
 
 export let mid_grid = 10;
 export let max_races = 23;
@@ -55,6 +56,27 @@ function getCompletedRaceIdsSet(data) {
         return new Set();
     }
     return new Set(completedRaceIds.map((raceId) => Number(raceId)));
+}
+
+function getRaceDnfPlotValue() {
+    return raceGraphMaxPosition + 1;
+}
+
+function buildRacePositionTicks() {
+    const ticks = [1];
+    for (let value = 2; value <= raceGraphMaxPosition; value += 2) {
+        ticks.push(value);
+    }
+    ticks.push(getRaceDnfPlotValue());
+    return ticks;
+}
+
+function formatRacePositionTick(value) {
+    const numericValue = Number(value);
+    if (numericValue === getRaceDnfPlotValue()) {
+        return "DNF";
+    }
+    return Number.isInteger(numericValue) ? `${numericValue}` : "";
 }
 
 function renderTeamLogo(container, teamId) {
@@ -1371,6 +1393,7 @@ function get_one_driver_points_format(driver, data) {
 function load_graphs_data(drivers) {
     let max_gapPole = 0;
     let max_gapWinner = 0;
+    const raceDnfPlotValue = getRaceDnfPlotValue();
     const races_ids = drivers[0].map(r => r[0]); // array de raceId en orden
     const races_done = drivers[drivers.length - 1]; // array de raceId ya corridas
     const racesDoneSet = new Set(Array.isArray(races_done) ? races_done.map((raceId) => Number(raceId)) : []);
@@ -1466,7 +1489,7 @@ function load_graphs_data(drivers) {
                 if (idx !== -1 && raceCompleted) {
                     // resultado carrera
                     if (d1_provisonal[idx] === -1) {
-                        d1_res.push(null);
+                        d1_res.push(raceDnfPlotValue);
                         d1_gapWinner.push(null);
                         d1_backgroundColors.push(d1_color + "50");
                     } else {
@@ -1623,7 +1646,8 @@ function findLastNonNaNIndex(arr) {
 }
 
 function updateMaxYAxis(newMax) {
-    driverGraph.options.scales.y.max = newMax;
+    raceGraphMaxPosition = Number(newMax);
+    driverGraph.options.scales.y.max = getRaceDnfPlotValue();
     qualiGraph.options.scales.y.max = newMax;
     driverGraph.update();
     qualiGraph.update();
@@ -1650,6 +1674,8 @@ function getNoEntryAnimationWithHoverTransition() {
  * @param {Array} labelsArray array with all the labels for the races
  */
 function createRaceChart(labelsArray, max) {
+    raceGraphMaxPosition = Number(max);
+    const raceDnfPlotValue = getRaceDnfPlotValue();
     const dataD = {
         labels: labelsArray,
     };
@@ -1688,12 +1714,18 @@ function createRaceChart(labelsArray, max) {
                     y: {
                         reverse: true,
                         min: 1,
-                        max: max,
+                        max: raceDnfPlotValue,
+                        afterBuildTicks: function (scale) {
+                            scale.ticks = buildRacePositionTicks().map((value) => ({ value }));
+                        },
                         grid: {
                             color: theme_colors[selectedTheme].grid
                         },
                         ticks: {
                             color: theme_colors[selectedTheme].labels,
+                            callback: function (value) {
+                                return formatRacePositionTick(value);
+                            },
                             font: {
                                 family: "Formula1Bold"
                             }
@@ -1760,6 +1792,13 @@ function createRaceChart(labelsArray, max) {
                         bodyFont: {
                             family: 'Formula1',
                             size: 14
+                        },
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                const value = Number(tooltipItem.raw);
+                                const result = value === raceDnfPlotValue ? "DNF" : `P${value}`;
+                                return `${tooltipItem.dataset.label}: ${result}`;
+                            }
                         }
                     }
 
