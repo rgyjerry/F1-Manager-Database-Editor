@@ -4,6 +4,12 @@ All notable changes to this standalone Mac app adaptation are documented here.
 
 This project is based on the original [DatabaseEditor](https://github.com/IUrreta/DatabaseEditor) by [IUrreta](https://github.com/IUrreta), licensed under LGPL-3.0-or-later.
 
+## 3.5.10-local.20 - 2026-05-14
+
+### Fixed
+
+- Removed team inbox messages with invalid `SenderStaffID` references on save load and after season-mod edits, and expanded the cleanup to catch malformed `Sender={Gender={0}}` mail tokens.
+
 ## 3.5.10-local.19 - 2026-05-08
 
 ### Fixed

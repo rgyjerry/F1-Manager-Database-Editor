@@ -90,6 +90,28 @@ function formatCarLoadoutRepairNotice(result) {
   return `Repaired ${changes} car-part loadout link${changes === 1 ? "" : "s"}${createdText}`;
 }
 
+function formatBrokenInboxCleanupNotice(result) {
+  const removed = Number(result?.removed) || 0;
+  return `Removed ${removed} broken inbox message${removed === 1 ? "" : "s"} with invalid sender data`;
+}
+
+function postBrokenInboxCleanup(postMessage, result) {
+  if ((Number(result?.removed) || 0) <= 0) return;
+
+  postMessage({
+    responseMessage: "Broken inbox messages removed",
+    noti_msg: formatBrokenInboxCleanupNotice(result),
+    isEditCommand: true,
+    unlocksDownload: true
+  });
+}
+
+function cleanupBrokenInboxAfterEdit(postMessage) {
+  const result = cleanupBrokenInboxMessages();
+  postBrokenInboxCleanup(postMessage, result);
+  return result;
+}
+
 // Diccionario de comandos
 const workerCommands = {
   loadDB: async (data, postMessage) => {
@@ -171,6 +193,7 @@ const workerCommands = {
     CONTRACT_PLACEHOLDERS_24.endSeason = Number(yearData[0]) + 1;
 
     const repairResult = repairCarLoadoutItemAssociations(hasCustomTeam(yearData));
+    const inboxCleanupResult = cleanupBrokenInboxMessages({ installTriggers: false });
 
     const drivers = fetchDrivers(yearData[0]);
     postMessage({ responseMessage: "Save loaded succesfully", content: drivers, noti_msg: "Save loaded succesfully" });
@@ -183,6 +206,8 @@ const workerCommands = {
         unlocksDownload: true
       });
     }
+
+    postBrokenInboxCleanup(postMessage, inboxCleanupResult);
 
     const staff = fetchStaff(yearData[0]);
     postMessage({ responseMessage: "Staff fetched", content: staff });
@@ -723,7 +748,7 @@ const workerCommands = {
     if (data.mod === "2026"){
       changeDriverNumbers2026();
     }
-    cleanupBrokenInboxMessages();
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Time travel",
       isEditCommand: true,
@@ -740,7 +765,7 @@ const workerCommands = {
     else if (data.mod === "2026"){
       changeLineUps2026();
     }
-    cleanupBrokenInboxMessages();
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Line ups changed",
       isEditCommand: true,
@@ -774,6 +799,7 @@ const workerCommands = {
     else if (data.mod === "2026"){
       changeStats2026();
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Stats changed",
       isEditCommand: true,
@@ -796,6 +822,7 @@ const workerCommands = {
       change2024Standings(data.mod);
       change2025Standings(data.mod);
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     
     postMessage({
       responseMessage: "CFD times changed",
@@ -808,6 +835,7 @@ const workerCommands = {
     if (data.mod === "2026"){
       changeAdditionalRegulations2026();
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Regulations changed",
       isEditCommand: true,
@@ -821,6 +849,7 @@ const workerCommands = {
     else if (data.mod === "2026") {
       updateCalendar2026(data.type);
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Calendar changed",
       isEditCommand: true,
@@ -836,6 +865,7 @@ const workerCommands = {
     } else if (data.mod === "2026") {
       insertStaff2026();
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Extra drivers added",
       isEditCommand: true,
@@ -857,6 +887,7 @@ const workerCommands = {
     else if (data.mod === "2026") {
       updatePerofmrnace2026();
     }
+    cleanupBrokenInboxAfterEdit(postMessage);
     postMessage({
       responseMessage: "Performance changed",
       isEditCommand: true,
@@ -1037,6 +1068,7 @@ const workerCommands = {
   },
   add2026Engines: (data, postMessage) => {
     apply2026EnginePerformanceChanges();
+    cleanupBrokenInboxAfterEdit(postMessage);
 
     const engines = fetchEngines();
     postMessage({ responseMessage: "Engines fetched", content: engines });
